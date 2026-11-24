@@ -1,0 +1,16 @@
+{
+  "name": "uzman-hedef-takip",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Uzman Hedef Takip — Vercel + Supabase",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0"
+  }
+}

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Uzman Hedef Takip — Giriş</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="card login-card">
+      <div class="row" style="justify-content:space-between">
+        <h1>Uzman Hedef Takip</h1>
+        <span id="env" class="env-badge hidden"></span>
+      </div>
+      <p class="muted small" style="margin:4px 0 0">Günlük hedeflerinizi ve sayaçlarınızı takip edin.</p>
+
+      <div class="tabs" role="tablist">
+        <button type="button" class="active" data-tab="expert" role="tab">Uzman Girişi</button>
+        <button type="button" data-tab="admin" role="tab">Yönetici Girişi</button>
+      </div>
+
+      <!-- Uzman: kullanıcı adı -->
+      <form id="expert-form" class="stack">
+        <label class="field">Kullanıcı adı
+          <input type="text" id="ex-username" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="40">
+        </label>
+        <button class="btn primary" type="submit" id="ex-submit">Giriş yap</button>
+        <p class="muted small" style="margin:0">Bu cihazdan ilk girişinizde yöneticinizin onayı gerekir. Onaylanan cihazda oturumunuz açık kalır.</p>
+      </form>
+
+      <!-- Uzman: onay bekleniyor -->
+      <div id="expert-wait" class="stack hidden">
+        <p style="margin:0">Giriş isteğiniz yöneticiye iletildi. Yöneticinize aşağıdaki onay kodunu söyleyin:</p>
+        <div class="approval-code" id="wait-code">——</div>
+        <div class="row muted small"><span class="spinner"></span><span id="wait-text">Onay bekleniyor…</span></div>
+        <p class="muted small" style="margin:0">Kullanıcı adınızı doğru yazdığınızdan emin olun. İstek 10 dakika geçerlidir.</p>
+        <button class="btn" type="button" id="wait-cancel">Vazgeç</button>
+      </div>
+
+      <!-- Yönetici -->
+      <form id="admin-form" class="stack hidden">
+        <label class="field">Kullanıcı adı
+          <input type="text" id="ad-username" value="admin" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </label>
+        <label class="field">Şifre
+          <input type="password" id="ad-password" autocomplete="current-password" required>
+        </label>
+        <button class="btn primary" type="submit" id="ad-submit">Yönetici olarak giriş yap</button>
+      </form>
+
+      <p id="msg" class="small" style="margin:12px 0 0;color:var(--danger)"></p>
+    </div>
+  </div>
+  <script src="/vendor/supabase.js"></script>
+  <script type="module" src="/js/login.js"></script>
+</body>
+</html>

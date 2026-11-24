@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Uzman Hedef Takip</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">UH</span><span>Uzman Hedef Takip</span><span id="env" class="env-badge hidden"></span></div>
+    <div class="right">
+      <span id="live" class="live"><span class="dot"></span><span class="txt">Bağlanıyor…</span></span>
+      <span id="who" class="small muted"></span>
+      <button class="btn sm" id="logout" type="button">Çıkış</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2 id="today-title">Bugün</h2>
+          <div class="muted small">Bireysel hedef gerçekleşmeniz</div>
+        </div>
+        <div class="kpi"><span class="big num" id="my-rate">—</span><span class="muted small" id="my-sum"></span></div>
+      </div>
+      <div id="items" class="grid items"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Ekip KPI</h2>
+          <div class="muted small">Ekibin günlük hedef gerçekleşme oranı</div>
+        </div>
+        <div class="kpi"><span class="big num" id="team-rate">—</span></div>
+      </div>
+      <div id="team" class="stack"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Bugünkü işlemlerim</h2>
+        <span class="muted small">Yanlış işlemi geri alabilirsiniz</span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Saat</th><th>Kalem</th><th>Durum</th><th></th></tr></thead>
+        <tbody id="events"></tbody>
+      </table></div>
+    </div>
+  </main>
+
+  <script src="/vendor/supabase.js"></script>
+  <script type="module" src="/js/expert.js"></script>
+</body>
+</html>
