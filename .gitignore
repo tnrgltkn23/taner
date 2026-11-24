@@ -6,3 +6,4 @@ public/vendor/
 !.env.example
 *.log
 .DS_Store
+KURULUM.sql

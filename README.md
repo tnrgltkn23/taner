@@ -6,6 +6,16 @@ Uzmanların günlük sayaç işlemlerini, bireysel ve ekip hedeflerini gerçek z
 - **Veritabanı:** Supabase PostgreSQL (RLS etkin), Supabase Realtime, Supabase Auth
 - **Saat dilimi:** Europe/Istanbul
 
+## Canlı ortam
+
+| | |
+|---|---|
+| Site | https://taner-uw8t.vercel.app |
+| Yönetici paneli | https://taner-uw8t.vercel.app/yonetici |
+| Sağlık kontrolü | https://taner-uw8t.vercel.app/api/health |
+| GitHub | https://github.com/tnrgltkn23/taner |
+| Supabase | https://supabase.com/dashboard/project/zexgsgdhllguscyhlbfc |
+
 ## Mimari
 
 ```
