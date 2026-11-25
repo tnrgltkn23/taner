@@ -14,7 +14,12 @@ const env = (...names) => {
   for (const n of names) if (process.env[n]) return process.env[n].trim();
   return undefined;
 };
-export const SUPABASE_URL = () => env('SUPABASE_URL');
+// Değer ".../rest/v1/" gibi bir yol içerse bile yalnızca kök adres kullanılır
+export const SUPABASE_URL = () => {
+  const u = env('SUPABASE_URL');
+  if (!u) return u;
+  try { return new URL(u).origin; } catch { return u; }
+};
 export const PUBLISHABLE_KEY = () => env('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY');
 const SECRET_KEY = () => env('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY');
 export const CRON_SECRET = () => env('CRON_SECRET');
