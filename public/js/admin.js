@@ -358,10 +358,10 @@ async function renderPanel() {
   const active = users.filter((u) => u.active);
   $('u-count').textContent = `${active.length} aktif kullanıcı`;
   const teamOptions = (sel) => `<option value="">— Takımı yok —</option>${teams.map((t) => `<option value="${t.id}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}`;
-  $('u-table').innerHTML = `<thead><tr><th class="left">Kullanıcı adı</th><th class="left">Takım lideri</th><th>Son veri</th><th>Eklenme</th><th></th></tr></thead><tbody>${
-    active.map((u) => `<tr><td class="left"><b>${esc(u.username)}</b></td><td class="left"><select data-team="${u.id}">${teamOptions(u.team_leader_id)}</select></td><td class="small">${fmtDateTime(u.last_entry_at)}</td><td class="small muted">${fmtDateTime(u.created_at)}</td>
-      <td class="row" style="justify-content:flex-end"><button class="btn sm" data-pw="${u.id}">Şifre değiştir</button><button class="btn sm danger" data-rm="${u.id}">Sil</button></td></tr>`).join('')
-    || '<tr><td colspan="5" class="empty">Kullanıcı yok.</td></tr>'}</tbody>`;
+  $('u-table').innerHTML = `<thead><tr><th class="left">Kullanıcı adı</th><th class="left">Takım lideri</th><th>Son veri</th><th>İşlemler</th></tr></thead><tbody>${
+    active.map((u) => `<tr><td class="left" title="Eklenme: ${fmtDateTime(u.created_at)}"><b>${esc(u.username)}</b></td><td class="left"><select class="team-sel" data-team="${u.id}">${teamOptions(u.team_leader_id)}</select></td><td class="small nowrap">${fmtDateTime(u.last_entry_at)}</td>
+      <td><div class="actions"><button class="btn sm" data-pw="${u.id}">Şifre</button><button class="btn sm danger" data-rm="${u.id}">Sil</button></div></td></tr>`).join('')
+    || '<tr><td colspan="4" class="empty">Kullanıcı yok.</td></tr>'}</tbody>`;
 
   // Takım liderleri
   $('t-table').innerHTML = `<thead><tr><th class="left">Takım lideri</th><th>Kullanıcı</th><th></th></tr></thead><tbody>${
