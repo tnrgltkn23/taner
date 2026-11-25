@@ -121,7 +121,7 @@ export function handler(methods, fn) {
 // ---------------------------------------------------------------------
 // Kimlik doğrulama
 // ---------------------------------------------------------------------
-const USER_COLS = 'id, username, role, active, auth_user_id';
+const USER_COLS = 'id, username, role, active, auth_user_id, is_super';
 
 export async function getCaller(req) {
   const h = req.headers.authorization || '';

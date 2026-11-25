@@ -119,6 +119,30 @@ label.field input:focus { border-color: var(--navy); }
 .kpi.ok .val { color: var(--ok); }
 .kpi.low { border-top-color: var(--red); }
 .kpi.low .val { color: var(--red); }
+.section-title { margin: 22px 0 0; color: var(--navy); border-left: 4px solid var(--brand); padding-left: 10px; display: flex; align-items: baseline; gap: 10px; }
+.section-title + .kpis, .section-title + div > .kpis { margin-top: 12px; }
+
+/* Sıralanabilir başlıklar ve son veri girenler (yeşil → sarı) */
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { background: var(--navy-2); }
+th.sorted { background: var(--green-dark); }
+td.hl.hl-0, span.hl.hl-0 { background: #bfeccb; }
+td.hl.hl-1, span.hl.hl-1 { background: #d3efc0; }
+td.hl.hl-2, span.hl.hl-2 { background: #e6f0b5; }
+td.hl.hl-3, span.hl.hl-3 { background: #f4ecaa; }
+td.hl.hl-4, span.hl.hl-4 { background: #fbe5a2; }
+tfoot td { border-bottom: 0; padding-top: 10px; }
+input[type=time] { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; color: var(--text); }
+
+/* Uzman: yarışma duyurusu */
+.contest-pop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(30, 30, 30, .45); padding: 20px; animation: fadein .25s; }
+.contest-pop .box { background: #fff; border-radius: 16px; max-width: 520px; width: 100%; padding: 26px 26px 18px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); border-top: 6px solid var(--brand); }
+.contest-pop .icon { font-size: 44px; line-height: 1; }
+.contest-pop h2 { margin: 10px 0 8px; color: var(--navy); font-size: 22px; }
+.contest-pop p { margin: 0 0 16px; font-size: 17px; }
+.contest-pop .bar { height: 5px; background: var(--brand-soft); border-radius: 3px; overflow: hidden; margin-top: 14px; }
+.contest-pop .bar i { display: block; height: 100%; background: var(--brand); animation: drain 10s linear forwards; }
+@keyframes drain { from { width: 100%; } to { width: 0; } }
 
 /* Sayaç grupları */
 .groups { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }

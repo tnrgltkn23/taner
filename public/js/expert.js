@@ -152,6 +152,56 @@ async function loadHistory() {
     </tbody>`;
 }
 
+// ---------------------------------------------------------------- Mini yarışma duyurusu
+// Başlangıç saatinde açık ekranlara 10 saniyelik duyuru çıkar; yarışma sürerken giriş yapan
+// uzmana da bir kez gösterilir (tarayıcı başına, localStorage ile).
+const contestTimers = new Map();
+const popQueue = [];
+let popOpen = false;
+const shownKey = (id) => `uht-contest-${id}`;
+
+function showNextPop() {
+  if (popOpen || !popQueue.length) return;
+  const c = popQueue.shift();
+  popOpen = true;
+  try { localStorage.setItem(shownKey(c.id), '1'); } catch { /* yok say */ }
+  const back = document.createElement('div');
+  back.className = 'contest-pop';
+  back.setAttribute('role', 'alertdialog');
+  back.innerHTML = `<div class="box"><div class="icon">🏆</div><h2>Mini yarışma başladı!</h2><p>${esc(c.message)}</p>
+    <button class="btn green" type="button">Tamam</button><div class="bar"><i></i></div></div>`;
+  const close = () => { if (!back.isConnected) return; back.remove(); popOpen = false; showNextPop(); };
+  back.querySelector('button').addEventListener('click', close);
+  back.addEventListener('click', (e) => { if (e.target === back) close(); });
+  document.body.appendChild(back);
+  setTimeout(close, 10_000);
+}
+
+async function fireContest(id) {
+  contestTimers.delete(id);
+  // İptal edilmiş olabilir: göstermeden önce yeniden kontrol et
+  const { data } = await client.from('contests').select('id, message, starts_at, ends_at').eq('id', id).maybeSingle();
+  if (!data || Date.parse(data.ends_at) <= Date.now()) return;
+  try { if (localStorage.getItem(shownKey(id))) return; } catch { /* yok say */ }
+  popQueue.push(data);
+  showNextPop();
+}
+
+async function loadContests() {
+  const rows = unwrap(await client.from('contests').select('id, starts_at, ends_at')
+    .gt('ends_at', new Date().toISOString()).order('starts_at').limit(20));
+  const seen = new Set(rows.map((r) => r.id));
+  for (const [id, t] of contestTimers) if (!seen.has(id)) { clearTimeout(t); contestTimers.delete(id); }
+  for (const c of rows) {
+    let shown = false;
+    try { shown = Boolean(localStorage.getItem(shownKey(c.id))); } catch { /* yok say */ }
+    if (shown || contestTimers.has(c.id)) continue;
+    const wait = Date.parse(c.starts_at) - Date.now();
+    if (wait <= 0) fireContest(c.id);
+    else if (wait < 24 * 3600_000) contestTimers.set(c.id, setTimeout(() => fireContest(c.id), wait));
+  }
+}
+
 // ---------------------------------------------------------------- Sekmeler ve senkronizasyon
 setupTabs($('nav'), (t) => { tab = t; refresh(); });
 const refresh = debounce(async () => {
@@ -165,9 +215,11 @@ await client.realtime.setAuth(session.access_token);
 client.channel(`uzman-${user.id}`)
   .on('postgres_changes', { event: '*', schema: 'public', table: 'entries', filter: `user_id=eq.${user.id}` }, refresh)
   .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, refresh)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'contests' }, () => loadContests().catch(() => {}))
   .subscribe((status) => { setLive($('live'), status); if (status === 'SUBSCRIBED') refresh(); });
 
 setInterval(() => { if (istanbulToday() !== day) { $('h-day').max = istanbulToday(); refresh(); } }, 30_000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { refresh(); loadContests().catch(() => {}); } });
 
 await Promise.all([loadSettings(), loadDaily()]);
+loadContests().catch(() => {});

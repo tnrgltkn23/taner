@@ -15,6 +15,7 @@
       <button data-tab="daily">Günlük Skor</button>
       <button data-tab="history">Geçmiş Skorlar</button>
       <button data-tab="panel">Yönetici Paneli</button>
+      <button data-tab="logins" id="tab-logins" class="hidden">Giriş Kayıtları</button>
     </nav>
     <span class="spacer"></span>
     <span id="maint-badge" class="pill red hidden">BAKIM MODU AÇIK</span>
@@ -44,19 +45,19 @@
         </div>
       </div>
 
-      <div class="kpis">
-        <div class="kpi" id="k-pp"><span class="lbl">Post Pre Take Rate</span><span class="val">—</span><span class="delta"></span><span class="hint">484 İkna / (484 İkna + 484 Geçiş + 14271)</span></div>
-        <div class="kpi" id="k-sd"><span class="lbl">Savedesk Take Rate</span><span class="val">—</span><span class="delta"></span><span class="hint">16234 İkna / (16234 İkna + 16234 İptal + 17891)</span></div>
-        <div class="kpi" id="k-ikna"><span class="lbl">Toplam İkna</span><span class="val">—</span><span class="delta"></span><span class="hint">484 İkna + 16234 İkna</span></div>
-        <div class="kpi" id="k-total"><span class="lbl">Total Take Rate</span><span class="val">—</span><span class="delta"></span><span class="hint">Tüm İkna / tüm 6 kalem</span></div>
-      </div>
+      <h2 class="section-title">Genel oran</h2>
+      <div id="k-general"></div>
+      <div id="k-teams"></div>
     </section>
 
     <!-- Günlük skor (bugün) -->
     <section data-panel="daily" class="hidden">
       <div class="card">
         <div class="card-head">
-          <div class="row"><span class="label-navy">Kullanıcı Seçin:</span><select id="d-user"></select></div>
+          <div class="row">
+            <span class="label-navy">Takım Lideri:</span><select id="d-team"></select>
+            <span class="label-navy">Kullanıcı Seçin:</span><select id="d-user"></select>
+          </div>
           <div class="row"><h2 id="d-title"></h2><span id="d-last" class="muted small"></span></div>
         </div>
         <div class="table-wrap"><table id="d-table"></table></div>
@@ -102,9 +103,56 @@
         <form id="user-form" class="row" style="margin-bottom:14px">
           <input type="text" id="nu-name" placeholder="kullanıcı adı (küçük harf)" maxlength="40" autocapitalize="none" spellcheck="false" required>
           <input type="text" id="nu-pass" placeholder="5 haneli şifre" inputmode="numeric" maxlength="5" required style="width:150px">
+          <select id="nu-team" title="Takım lideri"></select>
           <button class="btn green" type="submit">Kullanıcı ekle</button>
         </form>
         <div class="table-wrap" style="max-height:520px"><table id="u-table"></table></div>
+      </div>
+
+      <div class="panel-grid" style="margin-top:16px">
+        <div class="card">
+          <div class="card-head"><h2>Takım liderleri</h2></div>
+          <form id="team-form" class="row" style="margin-bottom:12px">
+            <input type="text" id="nt-name" placeholder="Ad Soyad" maxlength="60" required>
+            <button class="btn green" type="submit">Ekle</button>
+          </form>
+          <div class="table-wrap"><table id="t-table"></table></div>
+          <p class="muted small" style="margin:10px 0 0">Kullanıcının takımını yukarıdaki kullanıcı listesinden değiştirebilirsiniz.</p>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Mini yarışma oluştur</h2></div>
+          <form id="contest-form" class="stack">
+            <div class="row">
+              <label class="field">Tarih<input type="date" id="c-day" required></label>
+              <label class="field">Başlangıç<input type="time" id="c-start" required></label>
+              <label class="field">Bitiş<input type="time" id="c-end" required></label>
+            </div>
+            <div class="row">
+              <label class="field">Hedef ikna<input type="number" id="c-target" min="1" max="10000" step="1" style="width:110px" required></label>
+              <label class="field" style="flex:1">Ödül<input type="text" id="c-prize" maxlength="120" placeholder="ör. 1 saat erken çıkış" required></label>
+            </div>
+            <p class="muted small" id="c-preview" style="margin:0"></p>
+            <button class="btn green" type="submit">Yarışmayı yayınla</button>
+          </form>
+          <p class="muted small" style="margin:10px 0 0">Başlangıç saatinde uzmanların ekranında 10 saniyelik bir duyuru çıkar. İkna = 484 İkna + 16234 İkna.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-head"><h2>Yarışmalar</h2></div>
+        <div class="table-wrap" style="max-height:300px"><table id="c-table"></table></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Yarışma sorgusu</h2><span class="muted small">Seçilen saat aralığında uzmanların girdiği ikna adetleri</span></div>
+        <form id="q-form" class="row" style="margin-bottom:12px">
+          <label class="field">Tarih<input type="date" id="q-day" required></label>
+          <label class="field">Başlangıç saati<input type="time" id="q-start" required></label>
+          <label class="field">Bitiş saati<input type="time" id="q-end" required></label>
+          <label class="field">Takım lideri<select id="q-team"></select></label>
+          <button class="btn navy" type="submit" style="align-self:flex-end">Getir</button>
+        </form>
+        <div class="table-wrap" style="max-height:420px"><table id="q-table"></table></div>
       </div>
 
       <div class="panel-grid" style="margin-top:16px">
@@ -121,6 +169,14 @@
           <div class="card-head"><h2>Son yönetici işlemleri</h2></div>
           <div class="table-wrap" style="max-height:300px"><table id="audit-table"></table></div>
         </div>
+      </div>
+    </section>
+
+    <!-- Gizli ekran: yalnızca üst yönetici -->
+    <section data-panel="logins" class="hidden">
+      <div class="card">
+        <div class="card-head"><h2>Yönetici giriş kayıtları</h2><span class="muted small">Son 90 gün · en yeni üstte</span></div>
+        <div class="table-wrap" style="max-height:640px"><table id="l-table"></table></div>
       </div>
     </section>
   </main>
