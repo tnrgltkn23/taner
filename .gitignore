@@ -7,3 +7,4 @@ public/vendor/
 *.log
 .DS_Store
 KURULUM.sql
+supabase/tasima/2_yeni_projeye_aktar.sql
