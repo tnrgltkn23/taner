@@ -170,5 +170,4 @@ client.channel(`uzman-${user.id}`)
 setInterval(() => { if (istanbulToday() !== day) { $('h-day').max = istanbulToday(); refresh(); } }, 30_000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 
-await loadSettings();
-await loadDaily();
+await Promise.all([loadSettings(), loadDaily()]);

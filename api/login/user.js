@@ -11,27 +11,25 @@ export default handler(['POST'], async (req, body) => {
   if (!USER_PASSWORD_RE.test(password)) throw new HttpError(400, 'Şifre 5 haneli rakam olmalıdır');
 
   const ip = clientIp(req);
-  if (await tooMany('user', `u:${username}`, 5, 15) || await tooMany('user', `ip:${ip}`, 25, 15)) {
-    throw new HttpError(429, 'Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.');
-  }
-
-  const settings = await getSettings();
-  if (settings.maintenance) throw new HttpError(503, 'Sistem bakımda. Lütfen daha sonra tekrar deneyin.');
-
   const admin = adminClient();
-  const user = check(await admin.from('users')
-    .select('id, username, role, active, auth_user_id, password_hash')
-    .eq('username', username).eq('role', 'expert').maybeSingle());
+  // Birbirinden bağımsız kontroller aynı anda yapılır
+  const [lockUser, lockIp, settings, userRes] = await Promise.all([
+    tooMany('user', `u:${username}`, 5, 15),
+    tooMany('user', `ip:${ip}`, 25, 15),
+    getSettings(),
+    admin.from('users').select('id, username, role, active, auth_user_id, password_hash')
+      .eq('username', username).eq('role', 'expert').maybeSingle(),
+  ]);
+  if (lockUser || lockIp) throw new HttpError(429, 'Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.');
+  if (settings.maintenance) throw new HttpError(503, 'Sistem bakımda. Lütfen daha sonra tekrar deneyin.');
+  const user = check(userRes);
 
   const ok = verifyPassword(password, user?.password_hash || DUMMY_HASH) && user?.active;
   if (!ok) {
-    await recordAttempt('user', `u:${username}`, false);
-    await recordAttempt('user', `ip:${ip}`, false);
-    await sleep(300);
+    await Promise.all([recordAttempt('user', `u:${username}`, false), recordAttempt('user', `ip:${ip}`, false), sleep(300)]);
     throw new HttpError(401, 'Kullanıcı adı veya şifre hatalı');
   }
-  await recordAttempt('user', `u:${username}`, true);
 
-  const session = await mintSession(user);
+  const [session] = await Promise.all([mintSession(user), recordAttempt('user', `u:${username}`, true)]);
   return { session, user: publicUser(user) };
 });
