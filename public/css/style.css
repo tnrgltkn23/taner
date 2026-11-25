@@ -72,7 +72,8 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 }
 input:focus, select:focus, .btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 1px; }
 label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
-label.field input { font-size: 16px; }
+label.field input { font-size: 16px; border: 2px solid #b9c4da; padding: 10px 12px; }
+label.field input:focus { border-color: var(--navy); }
 
 /* Giriş */
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: linear-gradient(160deg, var(--navy) 0%, #08327f 55%, var(--bg) 55%); }

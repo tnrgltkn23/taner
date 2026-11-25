@@ -5,7 +5,7 @@ import {
 
 const $ = (id) => document.getElementById(id);
 const ctx = await requireSession('admin');
-if (!ctx) throw new Error('yönlendiriliyor');
+if (!ctx) await new Promise(() => {}); // yönlendirme sürerken dur
 const { client, session } = ctx;
 
 $('logout').addEventListener('click', logout);
