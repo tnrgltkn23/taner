@@ -12,7 +12,7 @@ $('logout').addEventListener('click', logout);
 showEnvBadge($('env'));
 
 const adminApi = (action, body = {}) => api('/api/admin', { action, ...body }, { auth: true });
-let tab = 'daily';
+let tab = 'home';
 let users = [];
 let settings = { postpre_target: 0.65, savedesk_target: 0.75, maintenance: false };
 const T = () => ({ pp: Number(settings.postpre_target), sd: Number(settings.savedesk_target) });
@@ -50,6 +50,107 @@ async function editCount(userId, day, item, current) {
     toast('Adet güncellendi', 'success');
   } catch (e) { toast(e.message, 'error'); }
   refresh();
+}
+
+// ---------------------------------------------------------------- Ana sayfa
+// Tüm uzmanların toplamı. Dönem: bugün veya bu ay (1'inden bugüne).
+// Oranlar bir önceki ayın tamamıyla, İkna adedi ise karşılaştırılabilir dönemle kıyaslanır:
+// "Bu ay" → önceki ayın aynı günleri, "Bugün" → önceki ayın günlük ortalaması (veri girilen günler).
+let period = 'month';
+$('k-period').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-p]');
+  if (!b || b.dataset.p === period) return;
+  period = b.dataset.p;
+  $('k-period').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+  renderHome().catch((e) => toast(e.message, 'error'));
+});
+
+const sumRows = (rows, keep = () => true) => {
+  const t = emptyTotals();
+  for (const r of rows) if (keep(r) && r.item in t) t[r.item] += Number(r.total);
+  return t;
+};
+const iknaOf = (t) => t.pp_ikna + t.sd_ikna;
+const totalRate = (t) => { const all = ITEMS.reduce((s, i) => s + t[i.code], 0); return all > 0 ? iknaOf(t) / all : null; };
+const fmt1 = (n) => Math.abs(n).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const monthName = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('tr-TR', { month: 'long', timeZone: 'UTC' }); };
+const prevYm = (ym) => { const [y, m] = ym.split('-').map(Number); return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`; };
+
+// Puan farkı satırı (oranlar)
+function pointDelta(el, cur, ref, suffix) {
+  el.className = 'delta';
+  if (cur === null || ref === null) { el.textContent = ref === null ? `${suffix}: veri yok` : ''; return; }
+  const d = (cur - ref) * 100;
+  el.classList.add(d >= 0 ? 'up' : 'down');
+  el.textContent = `${d >= 0 ? '▲ +' : '▼ −'}${fmt1(d)} puan ${suffix}`;
+}
+
+function setKpi(id, text, cls = '') {
+  const k = $(id);
+  k.className = `kpi ${cls}`;
+  k.querySelector('.val').textContent = text;
+  return k.querySelector('.delta');
+}
+
+async function renderHome() {
+  const today = istanbulToday();
+  const ym = today.slice(0, 7);
+  const pym = prevYm(ym);
+  const prev = monthRange(pym);
+  const pName = monthName(pym);
+  const from = period === 'month' ? `${ym}-01` : today;
+
+  const [curRows, prevRows] = await Promise.all([
+    client.rpc('period_totals', { p_from: from, p_to: today, p_user: null, p_by_day: false }).then(unwrap),
+    client.rpc('period_totals', { p_from: prev.from, p_to: prev.to, p_user: null, p_by_day: true }).then(unwrap),
+  ]);
+  const cur = sumRows(curRows);
+  const prevAll = sumRows(prevRows);
+  const r = rates(cur);
+  const pr = rates(prevAll);
+  const { pp: tpp, sd: tsd } = T();
+
+  const dayNum = Number(today.slice(8));
+  $('k-title').textContent = period === 'month' ? `Bu ay — ${monthName(ym)} ${ym.slice(0, 4)}` : `Bugün — ${fmtLong(today)}`;
+  $('k-sub').textContent = `Tüm uzmanların toplamı · ${period === 'month' ? `1–${dayNum} ${monthName(ym)}` : fmtShort(today)} · Kıyas: ${pName}`;
+
+  // Hedef kartı: bu dönemin oranının hedefe uzaklığı
+  $('k-tpp').textContent = pct(tpp);
+  $('k-tsd').textContent = pct(tsd);
+  for (const [el, rate, target] of [[$('k-tpp-d'), r.pp, tpp], [$('k-tsd-d'), r.sd, tsd]]) {
+    el.className = 'delta';
+    if (rate === null) { el.textContent = 'Henüz veri yok'; continue; }
+    const d = (rate - target) * 100;
+    el.classList.add(d >= 0 ? 'up' : 'down');
+    el.textContent = d >= 0 ? `▲ +${fmt1(d)} puan hedefin üstünde` : `▼ ${fmt1(d)} puan hedefin altında`;
+  }
+
+  // Oran kartları: önceki ayın tamamıyla kıyas
+  const cls = (rate, target) => (rate === null ? '' : rate >= target ? 'ok' : 'low');
+  pointDelta(setKpi('k-pp', pct(r.pp), cls(r.pp, tpp)), r.pp, pr.pp, `vs ${pName}`);
+  pointDelta(setKpi('k-sd', pct(r.sd), cls(r.sd, tsd)), r.sd, pr.sd, `vs ${pName}`);
+  pointDelta(setKpi('k-total', pct(totalRate(cur))), totalRate(cur), totalRate(prevAll), `vs ${pName}`);
+
+  // Toplam İkna: adet kıyası
+  const ikna = iknaOf(cur);
+  const dEl = setKpi('k-ikna', ikna.toLocaleString('tr-TR'));
+  let ref = null; let refLabel = '';
+  if (period === 'month') {
+    const lastDay = `${pym}-${String(Math.min(dayNum, prev.days.length)).padStart(2, '0')}`;
+    ref = iknaOf(sumRows(prevRows, (x) => x.day <= lastDay));
+    refLabel = `${pName} 1–${Number(lastDay.slice(8))}`;
+  } else {
+    const days = new Set(prevRows.map((x) => x.day)).size;
+    if (days) { ref = iknaOf(prevAll) / days; refLabel = `${pName} günlük ort. (${Math.round(ref).toLocaleString('tr-TR')})`; }
+  }
+  dEl.className = 'delta';
+  if (ref === null || ref === 0) dEl.textContent = `vs ${pName}: veri yok`;
+  else {
+    const d = ikna - ref;
+    const p = (d / ref) * 100;
+    dEl.classList.add(d >= 0 ? 'up' : 'down');
+    dEl.textContent = `${d >= 0 ? '▲ +' : '▼ −'}${fmt1(p)}% vs ${refLabel}`;
+  }
 }
 
 // ---------------------------------------------------------------- Günlük skor
@@ -120,7 +221,8 @@ async function renderHistory() {
   const uid = $('h-user').value || null;
   const ym = $('h-month').value || istanbulToday().slice(0, 7);
   const { from, to, days } = monthRange(ym);
-  const rows = unwrap(await client.rpc('day_totals', { p_from: from, p_to: to, p_user: uid }));
+  // Kullanıcılar birleştirilmiş günlük toplamlar (Tümü'de 1000 satır sınırına takılmaz)
+  const rows = unwrap(await client.rpc('period_totals', { p_from: from, p_to: to, p_user: uid, p_by_day: true }));
   const byDay = {};
   for (const r of rows) { (byDay[r.day] ||= emptyTotals())[r.item] += Number(r.total); }
   const today = istanbulToday();
@@ -214,7 +316,7 @@ $('pw-form').addEventListener('submit', async (ev) => {
 });
 
 // ---------------------------------------------------------------- Sekmeler ve senkronizasyon
-const renderers = { daily: renderDaily, history: renderHistory, panel: renderPanel };
+const renderers = { home: renderHome, daily: renderDaily, history: renderHistory, panel: renderPanel };
 setupTabs($('nav'), (t) => { tab = t; refresh(); });
 
 let running = false; let again = false;

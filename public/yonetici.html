@@ -11,7 +11,8 @@
   <header class="topbar"><div class="topbar-inner">
     <div class="brand"><img src="/img/pusulacx-logo.png" alt="Pusula CX" width="119" height="34"><span class="app">Yönetici Paneli</span> <span id="env" class="env-badge hidden"></span></div>
     <nav class="tabs" id="nav">
-      <button data-tab="daily" class="active">Günlük Skor</button>
+      <button data-tab="home" class="active">Ana Sayfa</button>
+      <button data-tab="daily">Günlük Skor</button>
       <button data-tab="history">Geçmiş Skorlar</button>
       <button data-tab="panel">Yönetici Paneli</button>
     </nav>
@@ -22,8 +23,37 @@
   </div></header>
 
   <main>
+    <!-- Ana sayfa: tüm uzmanların toplam oranları -->
+    <section data-panel="home">
+      <div class="home-head">
+        <div>
+          <h1 id="k-title">Bu ay</h1>
+          <p class="muted small" id="k-sub"></p>
+        </div>
+        <div class="seg" id="k-period" role="group" aria-label="Dönem">
+          <button type="button" data-p="today">Bugün</button>
+          <button type="button" data-p="month" class="active">Bu ay</button>
+        </div>
+      </div>
+
+      <div class="target-card">
+        <div class="title">Hedef</div>
+        <div class="targets">
+          <div class="t-col"><div class="t"><span>Post Pre Take Rate</span><b id="k-tpp">—</b></div><div class="delta" id="k-tpp-d"></div></div>
+          <div class="t-col"><div class="t"><span>Savedesk Take Rate</span><b id="k-tsd">—</b></div><div class="delta" id="k-tsd-d"></div></div>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi" id="k-pp"><span class="lbl">Post Pre Take Rate</span><span class="val">—</span><span class="delta"></span><span class="hint">484 İkna / (484 İkna + 484 Geçiş + 14271)</span></div>
+        <div class="kpi" id="k-sd"><span class="lbl">Savedesk Take Rate</span><span class="val">—</span><span class="delta"></span><span class="hint">16234 İkna / (16234 İkna + 16234 İptal + 17891)</span></div>
+        <div class="kpi" id="k-ikna"><span class="lbl">Toplam İkna</span><span class="val">—</span><span class="delta"></span><span class="hint">484 İkna + 16234 İkna</span></div>
+        <div class="kpi" id="k-total"><span class="lbl">Total Take Rate</span><span class="val">—</span><span class="delta"></span><span class="hint">Tüm İkna / tüm 6 kalem</span></div>
+      </div>
+    </section>
+
     <!-- Günlük skor (bugün) -->
-    <section data-panel="daily">
+    <section data-panel="daily" class="hidden">
       <div class="card">
         <div class="card-head">
           <div class="row"><span class="label-navy">Kullanıcı Seçin:</span><select id="d-user"></select></div>

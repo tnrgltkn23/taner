@@ -96,6 +96,30 @@ label.field input:focus { border-color: var(--navy); }
 .target-card .t { background: rgba(255, 255, 255, .08); border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
 .target-card .t b { font-size: 26px; color: var(--brand); }
 
+/* Yönetici ana sayfa */
+.home-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.home-head h1 { color: var(--navy); }
+.home-head p { margin: 4px 0 0; }
+.seg { display: inline-flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+.seg button { border: 0; background: transparent; padding: 7px 16px; border-radius: 7px; cursor: pointer; color: var(--muted); font-weight: 600; }
+.seg button.active { background: var(--navy); color: #fff; }
+.target-card .t-col { display: flex; flex-direction: column; gap: 6px; }
+.target-card .delta { text-align: center; color: #d9dedd; }
+.target-card .delta.up { color: #7fe0a0; }
+.target-card .delta.down { color: #ff9c9c; }
+.delta { font-size: 13px; font-weight: 700; color: var(--muted); min-height: 18px; }
+.delta.up { color: var(--ok); }
+.delta.down { color: var(--red); }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-top: 4px solid var(--brand); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.kpi .lbl { font-weight: 700; font-size: 13px; color: var(--navy); letter-spacing: .3px; text-transform: uppercase; }
+.kpi .val { font-size: 38px; font-weight: 800; line-height: 1.1; color: var(--navy); font-variant-numeric: tabular-nums; }
+.kpi .hint { font-size: 11px; color: var(--muted); }
+.kpi.ok { border-top-color: var(--ok); }
+.kpi.ok .val { color: var(--ok); }
+.kpi.low { border-top-color: var(--red); }
+.kpi.low .val { color: var(--red); }
+
 /* Sayaç grupları */
 .groups { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
 .group h2 { margin-bottom: 12px; color: var(--navy); }
@@ -169,10 +193,12 @@ td.editable:hover { background: var(--amber-soft) !important; }
 
 @media (max-width: 900px) {
   .groups, .panel-grid { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 560px) {
   main { padding: 12px; }
   .counters { grid-template-columns: repeat(3, 1fr); }
   .counters .rate-box { grid-column: 1 / -1; }
   .gsm-bar input { width: 100%; }
+  .kpis, .target-card .targets { grid-template-columns: 1fr; }
 }
