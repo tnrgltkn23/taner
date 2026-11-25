@@ -4,7 +4,7 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "crons": [
-    { "path": "/api/cron/daily-close", "schedule": "5 21 * * *" }
+    { "path": "/api/cron/daily", "schedule": "0 0 * * *" }
   ],
   "headers": [
     {

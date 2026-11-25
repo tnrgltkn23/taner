@@ -1,135 +1,115 @@
-// Yönetici işlemleri. Her istek sunucuda doğrulanır (JWT -> profil -> rol = admin)
+// Yönetici işlemleri. Her istek sunucuda doğrulanır (JWT -> kullanıcı -> rol = admin)
 // ve yönetici işlem geçmişine (admin_audit) yazılır.
 import {
-  handler, HttpError, adminClient, check, requireAdmin, audit, normUsername,
-  USERNAME_RE, UUID_RE,
+  handler, HttpError, adminClient, check, requireAdmin, audit, normUsername, hashPassword, verifyPassword,
+  USERNAME_RE, USER_PASSWORD_RE, UUID_RE, ITEMS,
 } from './_lib/core.js';
 
-const int = (v, name, { min = 0, max = 1_000_000 } = {}) => {
-  const n = Number(v);
-  if (!Number.isInteger(n) || n < min || n > max) throw new HttpError(400, `Geçersiz ${name}`);
-  return n;
-};
-const uuid = (v, name = 'kimlik') => {
+const uuid = (v, name = 'kullanıcı') => {
   if (!UUID_RE.test(String(v || ''))) throw new HttpError(400, `Geçersiz ${name}`);
   return String(v);
-};
-const text = (v, name, max = 80) => {
-  const s = String(v ?? '').trim();
-  if (!s || s.length > max) throw new HttpError(400, `Geçersiz ${name}`);
-  return s;
 };
 const isoDate = (v) => {
   const s = String(v || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw new HttpError(400, 'Geçersiz tarih');
   return s;
 };
+const percent = (v, name) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 100) throw new HttpError(400, `${name} 0-100 arasında olmalı`);
+  return Math.round(n * 100) / 10000; // %65 -> 0.65
+};
+
+async function expertById(id) {
+  const u = check(await adminClient().from('users').select('id, username, role, active').eq('id', id).maybeSingle());
+  if (!u || u.role !== 'expert') throw new HttpError(404, 'Kullanıcı bulunamadı');
+  return u;
+}
 
 const actions = {
-  async approve_request(me, b) {
-    const id = uuid(b.id);
-    const rows = check(await adminClient().from('device_requests')
-      .update({ status: 'approved', decided_at: new Date().toISOString(), decided_by: me.id })
-      .eq('id', id).eq('status', 'pending').select('id, profile_id'));
-    if (!rows.length) throw new HttpError(409, 'İstek artık beklemede değil');
-    return { audit: { request_id: id, profile_id: rows[0].profile_id } };
-  },
-
-  async reject_request(me, b) {
-    const id = uuid(b.id);
-    const rows = check(await adminClient().from('device_requests')
-      .update({ status: 'rejected', decided_at: new Date().toISOString(), decided_by: me.id })
-      .eq('id', id).eq('status', 'pending').select('id, profile_id'));
-    if (!rows.length) throw new HttpError(409, 'İstek artık beklemede değil');
-    return { audit: { request_id: id, profile_id: rows[0].profile_id } };
-  },
-
   async create_user(me, b) {
     const username = normUsername(b.username);
-    if (!USERNAME_RE.test(username)) {
-      throw new HttpError(400, 'Kullanıcı adı 2-40 karakter olmalı; harf, rakam, nokta, tire veya alt çizgi kullanın');
-    }
-    const display_name = text(b.display_name, 'ad soyad');
-    const row = check(await adminClient().from('profiles')
-      .insert({ username, display_name, role: 'expert' }).select('id, username, display_name').single());
-    return { result: row, audit: row };
-  },
-
-  async update_user(me, b) {
-    const id = uuid(b.id);
+    const password = String(b.password || '');
+    if (!USERNAME_RE.test(username)) throw new HttpError(400, 'Kullanıcı adı yalnızca küçük harf, rakam ve . _ - içerebilir (Türkçe karakter yok)');
+    if (!USER_PASSWORD_RE.test(password)) throw new HttpError(400, 'Şifre 5 haneli rakam olmalıdır');
     const admin = adminClient();
-    const target = check(await admin.from('profiles').select('id, role, active').eq('id', id).single());
-    if (target.role !== 'expert') throw new HttpError(400, 'Yalnızca uzman hesapları düzenlenebilir');
-    const patch = { updated_at: new Date().toISOString() };
-    if (b.display_name !== undefined) patch.display_name = text(b.display_name, 'ad soyad');
-    if (b.active !== undefined) patch.active = Boolean(b.active);
-    check(await admin.from('profiles').update(patch).eq('id', id));
-    if (patch.active === false) {
-      check(await admin.rpc('revoke_auth_sessions', { p_profile: id }));
-      check(await admin.from('device_requests').update({ status: 'expired' }).eq('profile_id', id).in('status', ['pending', 'approved']));
-    }
-    return { audit: { profile_id: id, ...patch } };
-  },
-
-  async revoke_sessions(me, b) {
-    const id = uuid(b.id);
-    check(await adminClient().rpc('revoke_auth_sessions', { p_profile: id }));
-    return { audit: { profile_id: id } };
-  },
-
-  async upsert_item(me, b) {
-    const admin = adminClient();
-    const row = {
-      name: text(b.name, 'kalem adı', 60),
-      sort_order: int(b.sort_order ?? 0, 'sıra', { min: -1000, max: 1000 }),
-      active: b.active === undefined ? true : Boolean(b.active),
-    };
-    let saved;
-    if (b.id) {
-      saved = check(await admin.from('counter_items').update(row).eq('id', int(b.id, 'kalem')).select().single());
+    const existing = check(await admin.from('users').select('id, role, active').eq('username', username).maybeSingle());
+    if (existing && (existing.active || existing.role !== 'expert')) throw new HttpError(409, 'Bu kullanıcı adı zaten kullanılıyor');
+    let row;
+    if (existing) {
+      // Daha önce silinmiş kullanıcı geri eklenir; geçmiş verileri korunur
+      row = check(await admin.from('users').update({ active: true, password_hash: hashPassword(password), updated_at: new Date().toISOString() })
+        .eq('id', existing.id).select('id, username').single());
     } else {
-      saved = check(await admin.from('counter_items').insert(row).select().single());
+      row = check(await admin.from('users').insert({ username, role: 'expert', password_hash: hashPassword(password) })
+        .select('id, username').single());
     }
-    return { result: saved, audit: saved };
+    return { result: row, audit: { username, restored: Boolean(existing) } };
   },
 
-  async set_goal(me, b) {
-    const scope = String(b.scope || '');
-    const p_profile = scope === 'individual' ? uuid(b.profile_id, 'uzman') : null;
-    const p_item = int(b.item_id, 'kalem', { min: 1 });
-    const p_target = b.target === null || b.target === '' ? null : int(b.target, 'hedef');
-    check(await adminClient().rpc('admin_set_goal', {
-      p_admin: me.id, p_scope: scope, p_profile, p_item, p_target,
-    }));
-    return { audit: { scope, profile_id: p_profile, item_id: p_item, target: p_target } };
-  },
-
-  async undo_event(me, b) {
-    const p_event = int(b.event_id, 'işlem', { min: 1, max: Number.MAX_SAFE_INTEGER });
-    const p_reason = String(b.reason || '').slice(0, 200);
-    check(await adminClient().rpc('admin_undo_event', { p_admin: me.id, p_event, p_reason }));
-    return { audit: { event_id: p_event, reason: p_reason } };
-  },
-
-  async close_day(me, b) {
-    const day = isoDate(b.day);
-    const closed = check(await adminClient().rpc('close_day', { p_day: day, p_by: `admin:${me.username}` }));
-    return { result: { closed }, audit: { day, closed } };
-  },
-
-  async catch_up(me) {
-    const closed = check(await adminClient().rpc('catch_up_closes', { p_by: `admin:${me.username}` }));
-    return { result: { closed_days: closed }, audit: { closed_days: closed } };
-  },
-
-  async change_password(me, b) {
+  async delete_user(me, b) {
+    const u = await expertById(uuid(b.id));
     const admin = adminClient();
-    const ok = check(await admin.rpc('verify_admin_password', { p_username: me.username, p_password: String(b.current || '') }));
-    if (!ok) throw new HttpError(400, 'Mevcut şifre hatalı');
+    check(await admin.from('users').update({ active: false, updated_at: new Date().toISOString() }).eq('id', u.id));
+    check(await admin.rpc('revoke_auth_sessions', { p_user: u.id }));
+    return { audit: { username: u.username } };
+  },
+
+  async set_user_password(me, b) {
+    const u = await expertById(uuid(b.id));
+    const password = String(b.password || '');
+    if (!USER_PASSWORD_RE.test(password)) throw new HttpError(400, 'Şifre 5 haneli rakam olmalıdır');
+    const admin = adminClient();
+    check(await admin.from('users').update({ password_hash: hashPassword(password), updated_at: new Date().toISOString() }).eq('id', u.id));
+    check(await admin.rpc('revoke_auth_sessions', { p_user: u.id }));
+    return { audit: { username: u.username } };
+  },
+
+  async set_targets(me, b) {
+    const postpre_target = percent(b.postpre, 'Post Pre hedefi');
+    const savedesk_target = percent(b.savedesk, 'Savedesk hedefi');
+    check(await adminClient().from('settings')
+      .update({ postpre_target, savedesk_target, updated_at: new Date().toISOString(), updated_by: me.id }).eq('id', 1));
+    return { audit: { postpre: postpre_target, savedesk: savedesk_target } };
+  },
+
+  async set_maintenance(me, b) {
+    const on = Boolean(b.on);
+    check(await adminClient().from('settings')
+      .update({ maintenance: on, updated_at: new Date().toISOString(), updated_by: me.id }).eq('id', 1));
+    return { audit: { maintenance: on } };
+  },
+
+  async change_own_password(me, b) {
+    const admin = adminClient();
+    const row = check(await admin.from('users').select('password_hash').eq('id', me.id).single());
+    if (!verifyPassword(String(b.current || ''), row.password_hash)) throw new HttpError(400, 'Mevcut şifre hatalı');
     const next = String(b.next || '');
-    if (next.length < 6 || next.length > 200) throw new HttpError(400, 'Yeni şifre en az 6 karakter olmalı');
-    check(await admin.rpc('admin_set_password', { p_admin: me.id, p_new: next }));
+    if (next.length < 4 || next.length > 100) throw new HttpError(400, 'Yeni şifre en az 4 karakter olmalı');
+    check(await admin.from('users').update({ password_hash: hashPassword(next), updated_at: new Date().toISOString() }).eq('id', me.id));
     return { audit: {} };
+  },
+
+  async set_count(me, b) {
+    const u = await expertById(uuid(b.user_id));
+    const day = isoDate(b.day);
+    const item = String(b.item || '');
+    if (!ITEMS.includes(item)) throw new HttpError(400, 'Geçersiz kalem');
+    const value = Number(b.value);
+    if (!Number.isInteger(value) || value < 0 || value > 100000) throw new HttpError(400, 'Adet 0 veya pozitif tam sayı olmalı');
+    const diff = check(await adminClient().rpc('admin_set_count', { p_admin: me.id, p_user: u.id, p_day: day, p_item: item, p_value: value }));
+    return { result: { diff }, audit: { username: u.username, day, item, value, diff } };
+  },
+
+  async delete_entry(me, b) {
+    const id = Number(b.id);
+    if (!Number.isInteger(id) || id < 1) throw new HttpError(400, 'Geçersiz kayıt');
+    const rows = check(await adminClient().from('entries')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: me.id })
+      .eq('id', id).is('deleted_at', null).select('id, user_id, item, day, gsm'));
+    if (!rows.length) throw new HttpError(404, 'Kayıt bulunamadı veya zaten silinmiş');
+    const r = rows[0];
+    return { audit: { entry_id: id, user_id: r.user_id, item: r.item, day: r.day } };
   },
 };
 

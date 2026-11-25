@@ -10,47 +10,35 @@
 <body>
   <div class="login-wrap">
     <div class="card login-card">
-      <div class="row" style="justify-content:space-between">
-        <h1>Uzman Hedef Takip</h1>
+      <div class="row">
+        <h1 style="color:var(--navy)">Uzman Hedef Takip</h1>
+        <span class="spacer"></span>
         <span id="env" class="env-badge hidden"></span>
       </div>
-      <p class="muted small" style="margin:4px 0 0">Günlük hedeflerinizi ve sayaçlarınızı takip edin.</p>
 
-      <div class="tabs" role="tablist">
-        <button type="button" class="active" data-tab="expert" role="tab">Uzman Girişi</button>
-        <button type="button" data-tab="admin" role="tab">Yönetici Girişi</button>
+      <div class="seg" role="tablist">
+        <button type="button" class="active" data-mode="user">Kullanıcı Girişi</button>
+        <button type="button" data-mode="admin">Yönetici Girişi</button>
       </div>
 
-      <!-- Uzman: kullanıcı adı -->
-      <form id="expert-form" class="stack">
-        <label class="field">Kullanıcı adı
-          <input type="text" id="ex-username" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="40">
+      <form id="user-form" class="stack" autocomplete="on">
+        <label class="field"><span class="label-navy">Kullanıcı Adı :</span>
+          <input type="text" id="u-name" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="40" required>
         </label>
-        <button class="btn primary" type="submit" id="ex-submit">Giriş yap</button>
-        <p class="muted small" style="margin:0">Bu cihazdan ilk girişinizde yöneticinizin onayı gerekir. Onaylanan cihazda oturumunuz açık kalır.</p>
+        <label class="field"><span class="label-navy">Şifre :</span>
+          <input type="password" id="u-pass" inputmode="numeric" autocomplete="current-password" maxlength="5" pattern="\d{5}" required>
+        </label>
+        <button class="btn green" type="submit" id="u-submit">Giriş</button>
       </form>
 
-      <!-- Uzman: onay bekleniyor -->
-      <div id="expert-wait" class="stack hidden">
-        <p style="margin:0">Giriş isteğiniz yöneticiye iletildi. Yöneticinize aşağıdaki onay kodunu söyleyin:</p>
-        <div class="approval-code" id="wait-code">——</div>
-        <div class="row muted small"><span class="spinner"></span><span id="wait-text">Onay bekleniyor…</span></div>
-        <p class="muted small" style="margin:0">Kullanıcı adınızı doğru yazdığınızdan emin olun. İstek 10 dakika geçerlidir.</p>
-        <button class="btn" type="button" id="wait-cancel">Vazgeç</button>
-      </div>
-
-      <!-- Yönetici -->
       <form id="admin-form" class="stack hidden">
-        <label class="field">Kullanıcı adı
-          <input type="text" id="ad-username" value="admin" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <label class="field"><span class="label-navy">Yönetici Şifresi :</span>
+          <input type="password" id="a-pass" autocomplete="current-password" required>
         </label>
-        <label class="field">Şifre
-          <input type="password" id="ad-password" autocomplete="current-password" required>
-        </label>
-        <button class="btn primary" type="submit" id="ad-submit">Yönetici olarak giriş yap</button>
+        <button class="btn green" type="submit" id="a-submit">Giriş</button>
       </form>
 
-      <p id="msg" class="small" style="margin:12px 0 0;color:var(--danger)"></p>
+      <p id="msg" class="small" style="margin:12px 0 0;color:var(--red);min-height:1.2em"></p>
     </div>
   </div>
   <script src="/vendor/supabase.js"></script>

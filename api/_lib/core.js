@@ -1,4 +1,4 @@
-// Sunucu tarafı ortak yardımcılar. Bu dosya yalnızca Vercel fonksiyonlarında çalışır;
+// Sunucu tarafı ortak yardımcılar. Yalnızca Vercel fonksiyonlarında çalışır;
 // gizli anahtar (SUPABASE_SECRET_KEY) asla tarayıcıya gönderilmez.
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
@@ -18,7 +18,7 @@ export const SUPABASE_URL = () => env('SUPABASE_URL');
 export const PUBLISHABLE_KEY = () => env('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY');
 const SECRET_KEY = () => env('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY');
 export const CRON_SECRET = () => env('CRON_SECRET');
-export const AUTH_EMAIL_DOMAIN = () => env('AUTH_EMAIL_DOMAIN') || 'uzman-hedef.example.com'; // e-posta gönderilmez; yalnızca iç kimlik
+const AUTH_EMAIL_DOMAIN = () => env('AUTH_EMAIL_DOMAIN') || 'uht2.example.com'; // e-posta gönderilmez; iç kimlik
 
 const noPersist = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 
@@ -40,25 +40,47 @@ export function publicClient() {
   return createClient(url, key, noPersist);
 }
 
-export const sha256 = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
-export const randomToken = (bytes = 32) => crypto.randomBytes(bytes).toString('base64url');
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export function safeEqual(a, b) {
   const x = Buffer.from(String(a));
   const y = Buffer.from(String(b));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
-export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 export function clientIp(req) {
   const fwd = req.headers['x-forwarded-for'];
   return (Array.isArray(fwd) ? fwd[0] : fwd || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
 }
 
-export const USERNAME_RE = /^[a-z0-9çğıöşü._-]{2,40}$/;
-export const normUsername = (u) => String(u || '').trim().toLocaleLowerCase('tr-TR');
+export const USERNAME_RE = /^[a-z0-9._-]{2,40}$/;
+export const USER_PASSWORD_RE = /^\d{5}$/;
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const ITEMS = ['pp_ikna', 'pp_gecis', 'pp_14271', 'sd_ikna', 'sd_iptal', 'sd_17891'];
+export const normUsername = (u) => String(u || '').trim().toLowerCase();
 
-// Veritabanı hatasını kullanıcıya anlaşılır biçimde aktarır
+// ---------------------------------------------------------------------
+// Şifre hash'i: PBKDF2-SHA256 (Node standart kütüphanesi)
+// ---------------------------------------------------------------------
+const ITER = 100_000;
+export function hashPassword(pw) {
+  const salt = crypto.randomBytes(16);
+  const dk = crypto.pbkdf2Sync(String(pw), salt, ITER, 32, 'sha256');
+  return `pbkdf2_sha256$${ITER}$${salt.toString('base64')}$${dk.toString('base64')}`;
+}
+export function verifyPassword(pw, stored) {
+  const parts = String(stored || '').split('$');
+  if (parts.length !== 4 || parts[0] !== 'pbkdf2_sha256') return false;
+  const iter = Number(parts[1]);
+  const salt = Buffer.from(parts[2], 'base64');
+  const expected = Buffer.from(parts[3], 'base64');
+  const dk = crypto.pbkdf2Sync(String(pw), salt, iter, expected.length, 'sha256');
+  return dk.length === expected.length && crypto.timingSafeEqual(dk, expected);
+}
+// Kullanıcı yoksa da aynı sürede yanıt vermek için
+export const DUMMY_HASH = hashPassword(crypto.randomBytes(8).toString('hex'));
+
+// ---------------------------------------------------------------------
+// Hata ve istek yardımcıları
+// ---------------------------------------------------------------------
 export function dbError(error) {
   if (!error) return null;
   const msg = error.message || 'Veritabanı hatası';
@@ -72,7 +94,6 @@ export function check({ data, error }) {
   return data;
 }
 
-// Ortak istek işleyici: yöntem kontrolü, JSON gövde, hata yanıtı
 export function handler(methods, fn) {
   return async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -95,8 +116,8 @@ export function handler(methods, fn) {
 // ---------------------------------------------------------------------
 // Kimlik doğrulama
 // ---------------------------------------------------------------------
+const USER_COLS = 'id, username, role, active, auth_user_id';
 
-// İsteği yapan kullanıcıyı Supabase oturum belirtecinden (JWT) doğrular
 export async function getCaller(req) {
   const h = req.headers.authorization || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
@@ -104,29 +125,26 @@ export async function getCaller(req) {
   const admin = adminClient();
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data?.user) throw new HttpError(401, 'Oturum geçersiz veya süresi dolmuş');
-  const profile = check(await admin.from('profiles').select('*').eq('auth_user_id', data.user.id).maybeSingle());
-  if (!profile || !profile.active) throw new HttpError(403, 'Hesap aktif değil');
-  return profile;
+  const u = check(await admin.from('users').select(USER_COLS).eq('auth_user_id', data.user.id).maybeSingle());
+  if (!u || !u.active) throw new HttpError(403, 'Hesap aktif değil');
+  return u;
 }
 
 export async function requireAdmin(req) {
-  const p = await getCaller(req);
-  if (p.role !== 'admin') throw new HttpError(403, 'Bu işlem yalnızca yönetici içindir');
-  return p;
+  const u = await getCaller(req);
+  if (u.role !== 'admin') throw new HttpError(403, 'Bu işlem yalnızca yönetici içindir');
+  return u;
 }
 
-// Profil için gerçek bir Supabase oturumu üretir (sunucu tarafında).
-// Supabase Auth kullanıcısı ilk girişte oluşturulur ve profile bağlanır.
-export async function mintSession(profile) {
+// Kullanıcı için gerçek bir Supabase oturumu üretir (sunucu tarafında).
+export async function mintSession(user) {
   const admin = adminClient();
-  const email = `${profile.id}@${AUTH_EMAIL_DOMAIN()}`;
-  let authId = profile.auth_user_id;
+  const email = `${user.id}@${AUTH_EMAIL_DOMAIN()}`;
+  let authId = user.auth_user_id;
 
   if (!authId) {
     const { data, error } = await admin.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      app_metadata: { profile_id: profile.id },
+      email, email_confirm: true, app_metadata: { app_user_id: user.id },
     });
     if (error && !/already|registered|exists/i.test(error.message)) {
       throw new HttpError(500, 'Kimlik kaydı oluşturulamadı: ' + error.message);
@@ -139,8 +157,8 @@ export async function mintSession(profile) {
     throw new HttpError(500, 'Oturum bağlantısı üretilemedi: ' + (linkErr?.message || ''));
   }
   authId = authId || link.user?.id;
-  if (authId && authId !== profile.auth_user_id) {
-    check(await admin.from('profiles').update({ auth_user_id: authId }).eq('id', profile.id));
+  if (authId && authId !== user.auth_user_id) {
+    check(await admin.from('users').update({ auth_user_id: authId }).eq('id', user.id));
   }
 
   const pub = publicClient();
@@ -153,17 +171,16 @@ export async function mintSession(profile) {
   return { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at };
 }
 
-export const publicProfile = (p) => ({ id: p.id, username: p.username, display_name: p.display_name, role: p.role });
+export const publicUser = (u) => ({ id: u.id, username: u.username, role: u.role });
 
 // ---------------------------------------------------------------------
 // Hız sınırlama ve denetim kaydı
 // ---------------------------------------------------------------------
-export async function tooMany(kind, key, max, minutes, failuresOnly = true) {
+export async function tooMany(kind, key, max, minutes) {
   const since = new Date(Date.now() - minutes * 60_000).toISOString();
-  let q = adminClient().from('auth_attempts').select('id', { count: 'exact', head: true })
-    .eq('kind', kind).eq('key', key).gte('created_at', since);
-  if (failuresOnly) q = q.eq('success', false);
-  const { count, error } = await q;
+  const { count, error } = await adminClient().from('auth_attempts')
+    .select('id', { count: 'exact', head: true })
+    .eq('kind', kind).eq('key', key).eq('success', false).gte('created_at', since);
   if (error) throw dbError(error);
   return (count || 0) >= max;
 }
@@ -175,4 +192,8 @@ export async function recordAttempt(kind, key, success) {
 export async function audit(adminId, action, details = {}) {
   const { error } = await adminClient().from('admin_audit').insert({ admin_id: adminId, action, details });
   if (error) console.error('audit yazılamadı', error);
+}
+
+export async function getSettings() {
+  return check(await adminClient().from('settings').select('*').eq('id', 1).single());
 }

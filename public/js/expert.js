@@ -1,145 +1,174 @@
 import {
-  requireSession, logout, unwrap, istanbulToday, fmtDay, fmtTime, esc, rate, rateHtml, barHtml,
-  toast, debounce, showEnvBadge, setLive,
+  requireSession, logout, unwrap, ITEMS, itemLabel, emptyTotals, rates, pct, rateClass, istanbulToday, fmtShort,
+  fmtLong, esc, toast, modal, debounce, showEnvBadge, setLive, setupTabs,
 } from './common.js';
 
 const $ = (id) => document.getElementById(id);
 const ctx = await requireSession('expert');
 if (!ctx) throw new Error('yönlendiriliyor');
-const { client, profile, session } = ctx;
+const { client, user, session } = ctx;
 
-$('who').textContent = profile.display_name;
+$('who').textContent = user.username;
 $('logout').addEventListener('click', logout);
 showEnvBadge($('env'));
 
+let tab = 'daily';
 let day = istanbulToday();
-let state = { items: [], goals: [], mine: [], team: [], events: [] };
+let settings = { postpre_target: 0.65, savedesk_target: 0.75, maintenance: false };
+let totals = emptyTotals();
 const busy = new Set();
 
-async function load() {
+// ---------------------------------------------------------------- Günlük skor
+function counterHtml(it) {
+  return `<div class="counter">
+    <div class="name">${esc(it.label)}</div>
+    <div class="value num" id="v-${it.code}">0</div>
+    <button class="btn green" data-add="${it.code}">Ekle</button>
+  </div>`;
+}
+$('g-pp').innerHTML = ITEMS.filter((i) => i.group === 'pp').map(counterHtml).join('')
+  + '<div class="rate-box" id="r-pp"><span class="lbl">Post Pre %</span><span class="val">—</span></div>';
+$('g-sd').innerHTML = ITEMS.filter((i) => i.group === 'sd').map(counterHtml).join('')
+  + '<div class="rate-box" id="r-sd"><span class="lbl">Savedesk %</span><span class="val">—</span></div>';
+
+function renderDaily() {
+  $('target-title').textContent = `${fmtShort(day)} Tarihinin Hedefi`;
+  $('t-pp').textContent = pct(Number(settings.postpre_target));
+  $('t-sd').textContent = pct(Number(settings.savedesk_target));
+  for (const it of ITEMS) $(`v-${it.code}`).textContent = totals[it.code];
+  const r = rates(totals);
+  for (const [key, val, target] of [['pp', r.pp, Number(settings.postpre_target)], ['sd', r.sd, Number(settings.savedesk_target)]]) {
+    const box = $(`r-${key}`);
+    box.className = `rate-box ${rateClass(val, target)}`;
+    box.querySelector('.val').textContent = pct(val);
+  }
+  document.querySelectorAll('[data-add]').forEach((b) => { b.disabled = busy.has(b.dataset.add) || settings.maintenance; });
+}
+
+async function loadSettings() {
+  settings = unwrap(await client.from('settings').select('postpre_target, savedesk_target, maintenance').eq('id', 1).single());
+  $('maint').classList.toggle('hidden', !settings.maintenance);
+}
+
+async function loadDaily() {
   day = istanbulToday();
-  const [items, goals, mine, team, events] = await Promise.all([
-    client.from('counter_items').select('id, name, sort_order').eq('active', true).order('sort_order').order('id'),
-    client.from('goals').select('scope, profile_id, item_id, daily_target'),
-    client.from('daily_user_totals').select('item_id, total').eq('day', day).eq('profile_id', profile.id),
-    client.from('daily_team_totals').select('item_id, total').eq('day', day),
-    client.from('counter_events').select('id, item_id, created_at, undone_at')
-      .eq('day', day).eq('profile_id', profile.id).order('created_at', { ascending: false }).limit(100),
-  ]);
-  state = {
-    items: unwrap(items), goals: unwrap(goals), mine: unwrap(mine), team: unwrap(team), events: unwrap(events),
-  };
-  render();
+  const rows = unwrap(await client.rpc('day_totals', { p_from: day, p_to: day, p_user: user.id }));
+  totals = emptyTotals();
+  for (const r of rows) totals[r.item] = Number(r.total);
+  renderDaily();
 }
 
-function myTarget(itemId) {
-  const own = state.goals.find((g) => g.scope === 'individual' && g.profile_id === profile.id && g.item_id === itemId);
-  if (own) return own.daily_target;
-  return state.goals.find((g) => g.scope === 'individual_default' && g.item_id === itemId)?.daily_target ?? 0;
-}
-const teamTarget = (itemId) => state.goals.find((g) => g.scope === 'team' && g.item_id === itemId)?.daily_target ?? 0;
-const myTotal = (itemId) => state.mine.find((r) => r.item_id === itemId)?.total ?? 0;
-const teamTotal = (itemId) => state.team.find((r) => r.item_id === itemId)?.total ?? 0;
+// GSM alanı: yalnızca rakam, 10 hane
+const gsmInput = $('gsm');
+gsmInput.addEventListener('input', () => {
+  gsmInput.value = gsmInput.value.replace(/\D/g, '').slice(0, 10);
+  gsmInput.classList.remove('invalid');
+});
 
-function render() {
-  $('today-title').textContent = fmtDay(day);
-
-  if (!state.items.length) {
-    $('items').innerHTML = '<div class="empty">Henüz sayaç kalemi tanımlanmamış. Yöneticiniz kalem eklediğinde burada görünecek.</div>';
-  } else {
-    $('items').innerHTML = state.items.map((it) => {
-      const total = myTotal(it.id);
-      const target = myTarget(it.id);
-      const r = rate(total, target);
-      return `<div class="card counter">
-        <div class="row" style="justify-content:space-between"><span class="name">${esc(it.name)}</span>${rateHtml(r)}</div>
-        <div class="value num">${total}<small> / ${target || '—'}</small></div>
-        ${barHtml(r)}
-        <button class="btn primary plus" data-item="${it.id}" ${busy.has(it.id) ? 'disabled' : ''}>+1</button>
-      </div>`;
-    }).join('');
+async function addEntry(item, force = false) {
+  const gsm = gsmInput.value;
+  if (!/^\d{10}$/.test(gsm)) {
+    gsmInput.classList.add('invalid');
+    gsmInput.focus();
+    toast('Adet eklemek için 10 haneli GSM numarası girmelisiniz', 'error');
+    return;
   }
-
-  const sumT = state.items.reduce((s, it) => s + myTotal(it.id), 0);
-  const sumG = state.items.reduce((s, it) => s + myTarget(it.id), 0);
-  const myR = rate(sumT, sumG);
-  $('my-rate').innerHTML = myR === null ? '—' : rateHtml(myR);
-  $('my-sum').textContent = `${sumT} / ${sumG || '—'} işlem`;
-
-  // Ekip: yalnızca oran gösterilir; kişi bazlı bilgi yok
-  const withTarget = state.items.filter((it) => teamTarget(it.id) > 0);
-  const tT = withTarget.reduce((s, it) => s + teamTotal(it.id), 0);
-  const tG = withTarget.reduce((s, it) => s + teamTarget(it.id), 0);
-  const teamR = rate(tT, tG);
-  $('team-rate').innerHTML = teamR === null ? '—' : rateHtml(teamR);
-  $('team').innerHTML = withTarget.length
-    ? withTarget.map((it) => {
-      const r = rate(teamTotal(it.id), teamTarget(it.id));
-      return `<div><div class="row" style="justify-content:space-between"><span>${esc(it.name)}</span>${rateHtml(r)}</div>${barHtml(r)}</div>`;
-    }).join('')
-    : '<div class="muted small">Ekip hedefi tanımlanmamış.</div>';
-
-  const names = Object.fromEntries(state.items.map((i) => [i.id, i.name]));
-  $('events').innerHTML = state.events.length
-    ? state.events.map((e) => `<tr class="${e.undone_at ? 'undone' : ''}">
-        <td class="num">${fmtTime(e.created_at)}</td>
-        <td>${esc(names[e.item_id] || '—')}</td>
-        <td class="no-strike">${e.undone_at ? '<span class="pill gray">Geri alındı</span>' : '<span class="pill green">Geçerli</span>'}</td>
-        <td class="no-strike" style="text-align:right">${e.undone_at ? '' : `<button class="btn sm danger" data-undo="${e.id}">Geri al</button>`}</td>
-      </tr>`).join('')
-    : '<tr><td colspan="4" class="empty">Bugün henüz işlem yok.</td></tr>';
-}
-
-// +1
-$('items').addEventListener('click', async (ev) => {
-  const btn = ev.target.closest('button[data-item]');
-  if (!btn) return;
-  const itemId = Number(btn.dataset.item);
-  if (busy.has(itemId)) return;
-  busy.add(itemId);
-  btn.disabled = true;
-  // Anında geri bildirim; gerçek değer veritabanından gelir
-  const row = state.mine.find((r) => r.item_id === itemId);
-  if (row) row.total += 1; else state.mine.push({ item_id: itemId, total: 1 });
-  render();
+  busy.add(item); renderDaily();
   try {
-    const { error } = await client.rpc('record_event', { p_item: itemId });
-    if (error) throw new Error(error.message);
+    const res = unwrap(await client.rpc('add_entry', { p_item: item, p_gsm: gsm, p_force: force }));
+    if (res.status === 'duplicate') {
+      busy.delete(item); renderDaily();
+      const yes = await modal({
+        title: 'Aynı GSM numarası',
+        message: `${gsm} numarası üzerinden bugün kayıt eklediniz. Tekrar eklemek istediğinize emin misiniz?`,
+        ok: 'Evet', cancel: 'Hayır',
+      });
+      if (yes) return await addEntry(item, true);
+      return;
+    }
+    totals[item] += 1;
+    gsmInput.value = '';
+    showUndo(res.id, item, gsm);
   } catch (e) {
-    toast(`İşlem kaydedilemedi: ${e.message}`, 'error');
+    toast(e.message, 'error');
   } finally {
-    busy.delete(itemId);
-    await load().catch(() => {});
+    busy.delete(item);
+    renderDaily();
+    loadDaily().catch(() => {});
   }
+}
+
+// 10 saniyelik geri alma
+function showUndo(id, item, gsm) {
+  const until = Date.now() + 10_000;
+  const t = toast(`${itemLabel(item)} eklendi · ${gsm}`, 'success', {
+    ms: 0,
+    action: {
+      label: 'Geri al (10)',
+      onClick: async (btn, el) => {
+        btn.disabled = true;
+        const { error } = await client.rpc('undo_entry', { p_id: id });
+        el.remove();
+        if (error) toast(error.message, 'error'); else toast('Kayıt geri alındı');
+        loadDaily().catch(() => {});
+      },
+    },
+  });
+  const btn = t.querySelector('button');
+  const timer = setInterval(() => {
+    const left = Math.ceil((until - Date.now()) / 1000);
+    if (left <= 0 || !t.isConnected) { clearInterval(timer); t.remove(); return; }
+    btn.textContent = `Geri al (${left})`;
+  }, 250);
+}
+
+document.querySelector('.groups').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-add]');
+  if (b && !b.disabled) addEntry(b.dataset.add);
 });
 
-// Geri al
-$('events').addEventListener('click', async (ev) => {
-  const btn = ev.target.closest('button[data-undo]');
-  if (!btn) return;
-  if (!confirm('Bu işlemi geri almak istiyor musunuz?')) return;
-  btn.disabled = true;
-  const { error } = await client.rpc('undo_my_event', { p_event: Number(btn.dataset.undo) });
-  if (error) toast(error.message, 'error'); else toast('İşlem geri alındı', 'success');
-  await load().catch(() => {});
-});
+// ---------------------------------------------------------------- Geçmiş skorlarım
+$('h-day').value = day;
+$('h-day').max = day;
+$('h-day').addEventListener('change', () => loadHistory().catch((e) => toast(e.message, 'error')));
 
-// Gerçek zamanlı senkronizasyon (RLS: yalnızca kendi verisi + ekip toplamı gelir)
-const refresh = debounce(() => load().catch((e) => toast(e.message, 'error')), 250);
+async function loadHistory() {
+  const d = $('h-day').value || istanbulToday();
+  $('h-title').textContent = fmtLong(d);
+  const rows = unwrap(await client.from('entries').select('item, gsm, delta, source, created_at')
+    .eq('user_id', user.id).eq('day', d).is('deleted_at', null).order('created_at'));
+  const t = emptyTotals();
+  const gsms = Object.fromEntries(ITEMS.map((i) => [i.code, []]));
+  for (const r of rows) {
+    t[r.item] += r.delta;
+    if (r.source === 'user') gsms[r.item].push(r.gsm);
+  }
+  $('h-table').innerHTML = `<thead><tr>${ITEMS.map((i) => `<th>${esc(i.label)}</th>`).join('')}</tr></thead>
+    <tbody>
+      <tr class="total">${ITEMS.map((i) => `<td class="num">${t[i.code]}</td>`).join('')}</tr>
+      <tr>${ITEMS.map((i) => `<td style="vertical-align:top"><div class="gsm-list">${
+        gsms[i.code].length ? gsms[i.code].map((g) => esc(g || '(silindi)')).join('<br>') : '<span class="muted">—</span>'
+      }</div></td>`).join('')}</tr>
+    </tbody>`;
+}
+
+// ---------------------------------------------------------------- Sekmeler ve senkronizasyon
+setupTabs($('nav'), (t) => { tab = t; refresh(); });
+const refresh = debounce(async () => {
+  try {
+    await loadSettings();
+    if (tab === 'daily') await loadDaily(); else await loadHistory();
+  } catch (e) { toast(e.message, 'error'); }
+}, 200);
+
 await client.realtime.setAuth(session.access_token);
-client.channel(`uzman-${profile.id}`)
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_user_totals', filter: `profile_id=eq.${profile.id}` }, refresh)
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'counter_events', filter: `profile_id=eq.${profile.id}` }, refresh)
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_team_totals' }, refresh)
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, refresh)
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'counter_items' }, refresh)
-  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profile.id}` }, async (p) => {
-    if (p.new && p.new.active === false) { toast('Hesabınız devre dışı bırakıldı', 'error'); setTimeout(logout, 1500); }
-  })
+client.channel(`uzman-${user.id}`)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'entries', filter: `user_id=eq.${user.id}` }, refresh)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, refresh)
   .subscribe((status) => { setLive($('live'), status); if (status === 'SUBSCRIBED') refresh(); });
 
-// Gün değişimini (Europe/Istanbul) yakala, sekmeye dönünce tazele
-setInterval(() => { if (istanbulToday() !== day) refresh(); }, 30_000);
+setInterval(() => { if (istanbulToday() !== day) { $('h-day').max = istanbulToday(); refresh(); } }, 30_000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 
-await load().catch((e) => toast(e.message, 'error'));
+await loadSettings();
+await loadDaily();

@@ -1,35 +1,31 @@
-// Yönetici girişi: kullanıcı adı + şifre (bcrypt, veritabanında hash olarak saklanır).
+// Yönetici girişi: yalnızca şifre (kullanıcı adı sorulmaz).
 import {
-  handler, HttpError, adminClient, check, clientIp, normUsername, sleep,
-  tooMany, recordAttempt, mintSession, publicProfile, audit,
+  handler, HttpError, adminClient, check, clientIp, verifyPassword, tooMany, recordAttempt,
+  mintSession, publicUser, audit, sleep,
 } from '../_lib/core.js';
 
 export default handler(['POST'], async (req, body) => {
-  const username = normUsername(body.username);
   const password = String(body.password || '');
-  if (!username || !password || password.length > 200) throw new HttpError(400, 'Kullanıcı adı ve şifre gerekli');
+  if (!password || password.length > 200) throw new HttpError(400, 'Şifre gerekli');
 
   const ip = clientIp(req);
-  if (await tooMany('admin', `u:${username}`, 5, 15) || await tooMany('admin', `ip:${ip}`, 10, 15)) {
+  if (await tooMany('admin', `ip:${ip}`, 5, 15) || await tooMany('admin', 'all', 30, 15)) {
     throw new HttpError(429, 'Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.');
   }
 
   const admin = adminClient();
-  const pid = check(await admin.rpc('verify_admin_password', { p_username: username, p_password: password }));
-  if (!pid) {
-    await recordAttempt('admin', `u:${username}`, false);
+  const user = check(await admin.from('users')
+    .select('id, username, role, active, auth_user_id, password_hash')
+    .eq('role', 'admin').maybeSingle());
+
+  if (!user || !user.active || !verifyPassword(password, user.password_hash)) {
     await recordAttempt('admin', `ip:${ip}`, false);
+    await recordAttempt('admin', 'all', false);
     await sleep(500);
-    throw new HttpError(401, 'Kullanıcı adı veya şifre hatalı');
+    throw new HttpError(401, 'Şifre hatalı');
   }
-  await recordAttempt('admin', `u:${username}`, true);
 
-  const profile = check(await admin.from('profiles').select('*').eq('id', pid).single());
-  const session = await mintSession(profile);
-  await audit(profile.id, 'admin_login', { ip });
-
-  // Yönetici her girişte eksik günlük kapanışları da tamamlatır
-  const { data: closed } = await admin.rpc('catch_up_closes', { p_by: 'catchup' });
-
-  return { session, profile: publicProfile(profile), closed_days: closed || 0 };
+  const session = await mintSession(user);
+  await audit(user.id, 'admin_login', { ip });
+  return { session, user: publicUser(user) };
 });

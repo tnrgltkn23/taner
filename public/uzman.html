@@ -8,49 +8,62 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand"><span class="logo">UH</span><span>Uzman Hedef Takip</span><span id="env" class="env-badge hidden"></span></div>
-    <div class="right">
-      <span id="live" class="live"><span class="dot"></span><span class="txt">Bağlanıyor…</span></span>
-      <span id="who" class="small muted"></span>
-      <button class="btn sm" id="logout" type="button">Çıkış</button>
-    </div>
-  </header>
+  <header class="topbar"><div class="topbar-inner">
+    <div class="brand"><span class="logo">UH</span>Uzman Hedef Takip <span id="env" class="env-badge hidden"></span></div>
+    <nav class="tabs" id="nav">
+      <button data-tab="daily" class="active">Günlük Skor</button>
+      <button data-tab="history">Geçmiş Skorlarım</button>
+    </nav>
+    <span class="spacer"></span>
+    <span id="live" class="live"><span class="dot"></span><span class="txt">Bağlanıyor…</span></span>
+    <span id="who" class="who"></span>
+    <button class="btn sm ghost" id="logout" type="button">Çıkış</button>
+  </div></header>
 
   <main>
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <h2 id="today-title">Bugün</h2>
-          <div class="muted small">Bireysel hedef gerçekleşmeniz</div>
+    <!-- Günlük skor -->
+    <section data-panel="daily">
+      <div class="target-card">
+        <div class="title" id="target-title">Tarihinin Hedefi</div>
+        <div class="targets">
+          <div class="t"><span>Post Pre</span><b id="t-pp">—</b></div>
+          <div class="t"><span>Savedesk</span><b id="t-sd">—</b></div>
         </div>
-        <div class="kpi"><span class="big num" id="my-rate">—</span><span class="muted small" id="my-sum"></span></div>
       </div>
-      <div id="items" class="grid items"></div>
-    </div>
 
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <h2>Ekip KPI</h2>
-          <div class="muted small">Ekibin günlük hedef gerçekleşme oranı</div>
+      <div class="groups">
+        <div class="card group">
+          <h2>Post Pre</h2>
+          <div class="counters" id="g-pp"></div>
         </div>
-        <div class="kpi"><span class="big num" id="team-rate">—</span></div>
+        <div class="card group">
+          <h2>Savedesk</h2>
+          <div class="counters" id="g-sd"></div>
+        </div>
       </div>
-      <div id="team" class="stack"></div>
-    </div>
 
-    <div class="card">
-      <div class="card-head">
-        <h2>Bugünkü işlemlerim</h2>
-        <span class="muted small">Yanlış işlemi geri alabilirsiniz</span>
+      <div class="card gsm-bar">
+        <span class="label-navy">Gsm No:</span>
+        <input type="tel" id="gsm" inputmode="numeric" maxlength="10" placeholder="5XXXXXXXXX" autocomplete="off">
+        <span class="muted small" id="gsm-hint">Her adet için işlem yaptığınız GSM numarasını (10 hane) girip ilgili <b>Ekle</b> butonuna basın.</span>
       </div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Saat</th><th>Kalem</th><th>Durum</th><th></th></tr></thead>
-        <tbody id="events"></tbody>
-      </table></div>
-    </div>
+    </section>
+
+    <!-- Geçmiş skorlarım -->
+    <section data-panel="history" class="hidden">
+      <div class="card">
+        <div class="card-head">
+          <div class="row"><span class="label-navy">Tarih Seçiniz:</span><input type="date" id="h-day"></div>
+          <h2 id="h-title"></h2>
+        </div>
+        <div class="table-wrap"><table id="h-table"></table></div>
+      </div>
+    </section>
   </main>
+
+  <div id="maint" class="maintenance hidden">
+    <div><h1>Sistem bakımda</h1><p>Kısa bir süre sonra tekrar kullanılabilir olacak. Sayfa otomatik olarak açılacaktır.</p></div>
+  </div>
 
   <script src="/vendor/supabase.js"></script>
   <script type="module" src="/js/expert.js"></script>

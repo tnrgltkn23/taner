@@ -1,19 +1,20 @@
-// Canlı ortam sağlık kontrolü: veritabanı bağlantısı ve kurulum durumu.
+// Canlı ortam sağlık kontrolü.
 import { handler, adminClient, CRON_SECRET, PUBLISHABLE_KEY } from './_lib/core.js';
 
 export default handler(['GET'], async () => {
   const admin = adminClient();
   const started = Date.now();
-  const { count: adminCount, error } = await admin.from('profiles')
-    .select('id', { count: 'exact', head: true }).eq('role', 'admin');
-  const { data: reports } = await admin.from('daily_reports').select('day').order('day', { ascending: false }).limit(1);
+  const { count: users, error } = await admin.from('users')
+    .select('id', { count: 'exact', head: true }).eq('role', 'expert').eq('active', true);
+  const { data: s } = await admin.from('settings').select('maintenance').eq('id', 1).maybeSingle();
   return {
     ok: !error,
     environment: process.env.VERCEL_ENV || 'development',
     commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || null,
     database: error ? `hata: ${error.message}` : 'bağlı',
-    schema_ready: !error && adminCount > 0,
-    last_closed_day: reports?.[0]?.day || null,
+    schema: error ? null : 'v2',
+    active_users: error ? null : users,
+    maintenance: s?.maintenance ?? null,
     cron_secret_set: Boolean(CRON_SECRET()),
     publishable_key_set: Boolean(PUBLISHABLE_KEY()),
     latency_ms: Date.now() - started,

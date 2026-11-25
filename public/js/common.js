@@ -1,8 +1,30 @@
 // Ortak istemci yardımcıları. Tarayıcı yalnızca GİZLİ OLMAYAN anahtarı (publishable) bilir;
 // tüm veri erişimi Supabase RLS politikalarıyla sınırlandırılır.
-const STORAGE_KEY = 'uht-auth';
+const STORAGE_KEY = 'uht2-auth';
 let _cfg;
 let _client;
+
+export const ITEMS = [
+  { code: 'pp_ikna', label: '484 İkna', group: 'pp' },
+  { code: 'pp_gecis', label: '484 Geçiş', group: 'pp' },
+  { code: 'pp_14271', label: '14271', group: 'pp' },
+  { code: 'sd_ikna', label: '16234 İkna', group: 'sd' },
+  { code: 'sd_iptal', label: '16234 İptal', group: 'sd' },
+  { code: 'sd_17891', label: '17891', group: 'sd' },
+];
+export const itemLabel = (code) => ITEMS.find((i) => i.code === code)?.label || code;
+export const emptyTotals = () => Object.fromEntries(ITEMS.map((i) => [i.code, 0]));
+
+// Post Pre % = 484 İkna / (484 İkna + 484 Geçiş + 14271)
+// Savedesk % = 16234 İkna / (16234 İkna + 16234 İptal + 17891)
+export function rates(t) {
+  const pd = t.pp_ikna + t.pp_gecis + t.pp_14271;
+  const sd = t.sd_ikna + t.sd_iptal + t.sd_17891;
+  return { pp: pd > 0 ? t.pp_ikna / pd : null, sd: sd > 0 ? t.sd_ikna / sd : null };
+}
+export const pct = (r) => (r === null || r === undefined ? '—' : `%${(Math.round(r * 1000) / 10).toLocaleString('tr-TR')}`);
+export const rateClass = (r, target) => (r === null || r === undefined ? '' : r >= target ? 'ok' : 'low');
+export const rateHtml = (r, target) => `<span class="rate ${rateClass(r, target)}">${pct(r)}</span>`;
 
 export async function getConfig() {
   if (!_cfg) {
@@ -38,84 +60,100 @@ export async function api(path, body, { auth = false } = {}) {
   return data;
 }
 
-// Supabase sorgu sonucunu açar, hatada istisna fırlatır
 export function unwrap({ data, error }) {
   if (error) throw new Error(error.message);
   return data;
 }
 
+// ---- Tarih (Europe/Istanbul)
 export function istanbulToday() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
-export function addDays(iso, n) {
-  const d = new Date(iso + 'T12:00:00Z');
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
+export const fmtShort = (d) => d.split('-').reverse().join('.');
+export const fmtLong = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('tr-TR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
 export const fmtTime = (iso) => new Date(iso).toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-export const fmtDateTime = (iso) => new Date(iso).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-export const fmtDay = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('tr-TR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+export const fmtDateTime = (iso) => (iso ? new Date(iso).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+export function monthRange(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const days = Array.from({ length: last }, (_, i) => `${ym}-${String(i + 1).padStart(2, '0')}`);
+  return { from: days[0], to: days[days.length - 1], days };
+}
 
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-
-export function rate(total, target) {
-  return target > 0 ? Math.round((total * 1000) / target) / 10 : null;
-}
-export function rateClass(r) {
-  if (r === null) return '';
-  return r >= 100 ? 'ok' : r >= 70 ? 'warn' : 'low';
-}
-export function rateHtml(r) {
-  return r === null ? '<span class="muted">—</span>' : `<span class="rate ${rateClass(r)}">%${r.toLocaleString('tr-TR')}</span>`;
-}
-export function barHtml(r) {
-  const w = r === null ? 0 : Math.min(100, r);
-  return `<div class="bar ${rateClass(r)}"><span style="width:${w}%"></span></div>`;
-}
-
-export function toast(msg, type = '') {
-  let box = document.getElementById('toast');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'toast';
-    document.body.appendChild(box);
-  }
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.textContent = msg;
-  box.appendChild(t);
-  setTimeout(() => t.remove(), type === 'error' ? 5000 : 2500);
-}
-
 export function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-// Oturumu doğrular ve profili döndürür; yetkisizse giriş sayfasına yönlendirir
+// ---- Bildirim
+export function toast(msg, type = '', { ms, action } = {}) {
+  let box = document.getElementById('toast');
+  if (!box) { box = document.createElement('div'); box.id = 'toast'; document.body.appendChild(box); }
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const span = document.createElement('span');
+  span.textContent = msg;
+  t.appendChild(span);
+  if (action) {
+    const b = document.createElement('button');
+    b.className = 'btn sm';
+    b.textContent = action.label;
+    b.onclick = () => action.onClick(b, t);
+    t.appendChild(b);
+  }
+  box.appendChild(t);
+  const life = ms ?? (type === 'error' ? 5000 : 2500);
+  if (life > 0) setTimeout(() => t.remove(), life);
+  return t;
+}
+
+// ---- Modal (onay / değer girişi)
+export function modal({ title, message = '', input = null, ok = 'Tamam', cancel = 'Vazgeç', danger = false }) {
+  return new Promise((resolve) => {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+      <h3>${esc(title)}</h3>${message ? `<p>${esc(message)}</p>` : ''}
+      ${input ? `<input type="${input.type || 'text'}" ${input.inputmode ? `inputmode="${input.inputmode}"` : ''} ${input.maxlength ? `maxlength="${input.maxlength}"` : ''} placeholder="${esc(input.placeholder || '')}" value="${esc(input.value ?? '')}">` : ''}
+      <div class="actions"><button class="btn" data-x="0">${esc(cancel)}</button><button class="btn ${danger ? 'danger' : 'green'}" data-x="1">${esc(ok)}</button></div>
+    </div>`;
+    document.body.appendChild(back);
+    const inp = back.querySelector('input');
+    const done = (v) => { back.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+    const onKey = (e) => { if (e.key === 'Escape') done(null); if (e.key === 'Enter') done(inp ? inp.value : true); };
+    document.addEventListener('keydown', onKey);
+    back.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-x]');
+      if (b) done(b.dataset.x === '1' ? (inp ? inp.value : true) : null);
+      else if (e.target === back) done(null);
+    });
+    (inp || back.querySelector('[data-x="1"]')).focus();
+    if (inp) inp.select();
+  });
+}
+
+// ---- Oturum
 export async function requireSession(role) {
   const client = await getClient();
   const { data } = await client.auth.getSession();
   if (!data.session) { location.replace('/'); return null; }
-  const { data: profile, error } = await client.from('profiles')
-    .select('id, username, display_name, role, active')
-    .eq('auth_user_id', data.session.user.id).maybeSingle();
-  if (error || !profile) {
+  const { data: user, error } = await client.from('users')
+    .select('id, username, role, active').eq('id', await myId(client)).maybeSingle();
+  if (error || !user) {
     await client.auth.signOut({ scope: 'local' });
     location.replace('/?e=oturum');
     return null;
   }
-  if (profile.role !== role) {
-    location.replace(profile.role === 'admin' ? '/yonetici' : '/uzman');
-    return null;
-  }
-  // Oturum başka yerden sonlandırılırsa (yönetici iptal ederse) girişe dön
-  client.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') location.replace('/');
-  });
-  return { client, profile, session: data.session };
+  if (user.role !== role) { location.replace(user.role === 'admin' ? '/yonetici' : '/uzman'); return null; }
+  client.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') location.replace('/'); });
+  return { client, user, session: data.session };
+}
+async function myId(client) {
+  const { data } = await client.rpc('current_user_id');
+  return data || '00000000-0000-0000-0000-000000000000';
 }
 
 export async function logout() {
@@ -136,6 +174,15 @@ export async function showEnvBadge(el) {
 
 export function setLive(el, status) {
   el.classList.toggle('on', status === 'SUBSCRIBED');
-  el.classList.toggle('off', status !== 'SUBSCRIBED');
   el.querySelector('.txt').textContent = status === 'SUBSCRIBED' ? 'Canlı' : 'Bağlanıyor…';
+}
+
+export function setupTabs(nav, onChange) {
+  nav.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-tab]');
+    if (!b) return;
+    nav.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+    document.querySelectorAll('[data-panel]').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== b.dataset.tab));
+    onChange(b.dataset.tab);
+  });
 }
