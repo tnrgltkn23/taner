@@ -34,3 +34,15 @@ Uzmanların günlük Post Pre ve Savedesk adetlerini GSM numarasıyla kaydettiğ
 1. `supabase/migrations/0001_schema.sql` SQL Editor'de çalıştırılır.
 2. Kullanıcılar yönetici panelinden eklenir (ilk yüklemede Dash listesi hash'lenmiş olarak ayrı bir SQL ile aktarıldı; o dosya depoda tutulmaz).
 3. Vercel ortam değişkenleri: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `CRON_SECRET`.
+
+## Ortamlar
+
+| Ortam | Git dalı | Adres | Veritabanı (Supabase) |
+|---|---|---|---|
+| Canlı | `main` | https://taner-uw8t.vercel.app | `tanerr` (mzppkijyczxctljopjqv, eu-west-1) |
+| Test | `dev` | https://taner-uw8t-git-dev-taner12.vercel.app | `uzman-hedef-test` (tubqampxxipwgeshftdu, eu-west-1) |
+
+- Vercel ortam değişkenleri: canlı anahtarlar yalnızca **Production**, test anahtarları yalnızca **Preview → dev**.
+- Test sitesi Vercel girişiyle korunur ve üstünde "TEST ORTAMI" etiketi görünür.
+- Akış: değişiklik önce `dev` dalına gönderilir, test sitesinde denenir, sorun yoksa `main`'e birleştirilir.
+- Test veritabanı `TEST-KURULUM.sql` (git dışında) ile kuruldu: şema + örnek kullanıcılar (`test1`, `test2`, yönetici).
