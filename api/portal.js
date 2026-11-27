@@ -271,6 +271,13 @@ async function changeAdminPassword(a, current, next, minLen) {
 }
 
 // ---------------------------------------------------------------- Günlük Verilerim yönetimi
+// Bizim işlem adlarımız → portal ekranının tanıdığı adlar
+const AUDIT_AS = {
+  create_user: 'users', delete_user: 'users', set_user_password: 'users', set_count: 'adjust', delete_entry: 'remove',
+  set_team: 'teams', create_team_leader: 'teams', delete_team_leader: 'teams', create_contest: 'contests', cancel_contest: 'contests',
+  change_own_password: 'password', set_maintenance: 'maintenance', set_targets: 'targets', plan_names: 'plan-names',
+  portal_plans: 'Mola planı yüklendi', portal_plan_delete: 'Mola planı silindi', portal_maintenance: 'Site bakım ayarı değiştirildi',
+};
 const managerCookie = (v) => cookie('uzman_daily_manager', v, MANAGER_SESSION_S, '/api/daily/admin/');
 
 async function report(q, d) {
@@ -442,7 +449,7 @@ async function managerRoute(req, route, isGet, body, q) {
     if (route === 'contest-results') return contestResults(q);
     if (route === 'audit') {
       const rows = check(await db().from('admin_audit').select('action, created_at, admin:users(is_super)').neq('action', 'admin_login').order('created_at', { ascending: false }).limit(50));
-      return reply({ rows: rows.map((r) => ({ role: r.admin?.is_super ? 'super' : 'admin', action: r.action, at: ms(r.created_at) })) });
+      return reply({ rows: rows.map((r) => ({ role: r.admin?.is_super ? 'super' : 'admin', action: AUDIT_AS[r.action] || r.action, at: ms(r.created_at) })) });
     }
     if (route === 'logins') {
       if (role !== 'super') return reply({ error: 'Bu ekran yalnızca süper yönetici içindir.' }, 403);
@@ -455,7 +462,11 @@ async function managerRoute(req, route, isGet, body, q) {
 
   switch (route) {
     case 'users': return manageUser(me, body);
-    case 'plan-names': return planNames(body);
+    case 'plan-names': {
+      const r = await planNames(body);
+      if (r.status === 200) await audit(me.id, 'plan_names', { updated: r.body.updated, portal: true });
+      return r;
+    }
     case 'adjust': return adjust(me, body, d);
     case 'remove': return removeEntry(me, body);
     case 'teams': return manageTeam(me, body);
