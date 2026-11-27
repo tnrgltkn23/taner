@@ -233,3 +233,6 @@ td.editable:hover { background: var(--amber-soft) !important; }
   .gsm-bar input { width: 100%; }
   .kpis, .target-card .targets { grid-template-columns: 1fr; }
 }
+
+/* Giriş sayfası arka planı: KPI Performans sayfasındaki gece manzarası */
+.login-wrap { background: linear-gradient(180deg, #0b183079, #142b4960 58%, #081421c4), url('/portal/dusk-open.webp') center 67% / cover no-repeat, linear-gradient(180deg,#4a7ff2,#7b7ed8 30%,#c98ab5 65%,#e8a87c); }
