@@ -29,3 +29,8 @@
 .feature-art.representative-art{display:block;width:100%;height:auto;max-height:420px;object-fit:contain;align-self:center;border-radius:24px}@media(max-width:650px){.feature-art.representative-art{height:auto;max-height:320px;margin-bottom:24px;border-radius:18px}}
 
 .my-clear{justify-self:start;padding:7px 0;background:none;color:#0254a5;font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:4px}
+
+/* Taner & Eren logosu: renkli PNG olduğu gibi gösterilir (eski tek renkli maske kapalı) */
+.site-header .logo::after,.admin-header>a:first-child::after,.top .brand::after,.footer-logo-blue::after{display:none!important}
+.site-header .logo img,.footer-logo-blue img{opacity:1!important;filter:none!important;width:auto!important;height:72px!important;object-fit:contain}
+.footer-logo-blue{width:auto}
