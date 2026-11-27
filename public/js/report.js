@@ -27,7 +27,8 @@ function loadSheetJs() {
 function table(XLSX, wb, sheetName, mustHave) {
   const ws = wb.Sheets[sheetName];
   if (!ws) throw new Error(`Raporda "${sheetName}" sayfası yok`);
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd hh:mm:ss', blankrows: false });
+  // raw: tarih hücreleri Date nesnesi olarak gelir (biçimlendirmeden bağımsız)
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, blankrows: false });
   const hi = rows.findIndex((r) => r.some((c) => norm(c) === norm(mustHave)));
   if (hi < 0) throw new Error(`"${sheetName}" sayfasında "${mustHave}" başlığı bulunamadı`);
   const idx = {};
@@ -42,6 +43,10 @@ function table(XLSX, wb, sheetName, mustHave) {
 
 // Tarih hücresi: "2026-11-26 13:45:00" veya Excel'in gösterdiği başka biçimler → "YYYY-MM-DD"
 function dayOf(v) {
+  if (v instanceof Date && !Number.isNaN(v.getTime())) {
+    // SheetJS Excel tarihini yerel saatle kurar; yerel bileşenler Excel'deki günü verir
+    return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`;
+  }
   const s = String(v ?? '').trim();
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
