@@ -16,7 +16,7 @@ function loadSheetJs() {
   if (window.XLSX) return Promise.resolve(window.XLSX);
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = '/vendor/xlsx.full.min.js';
+    s.src = '/vendor/xlsx.full.min.js?v=0.20.3';
     s.onload = () => resolve(window.XLSX);
     s.onerror = () => reject(new Error('Excel okuyucu yüklenemedi'));
     document.head.appendChild(s);
