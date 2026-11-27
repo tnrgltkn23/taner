@@ -1,3 +1,12 @@
+// Yönetici ekranına gömülü mod (?embed=1&view=live|stats|day-plan|week): üst bölüm ve sekmeler gizlenir,
+// yönetici ekranının oturumu (Supabase) kullanılır.
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+const EMBED_VIEW = new URLSearchParams(location.search).get('view') || 'live';
+let EMBED_TOKEN = null;
+if (EMBED) {
+  document.documentElement.classList.add('embed');
+  try { EMBED_TOKEN = JSON.parse(localStorage.getItem('uht2-auth') || 'null')?.access_token || null; } catch { EMBED_TOKEN = null; }
+}
 import {parseWorkbook} from '../parse.js';
 import {planState,scheduleFor} from '../plan-time.js';
 const $=id=>document.getElementById(id),node=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
@@ -14,7 +23,7 @@ async function api(path, options = {}) {
   try {
     const res = await fetch('/api/mola/' + path, {
       ...options, signal,
-      headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
+      headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(EMBED_TOKEN ? { Authorization: 'Bearer ' + EMBED_TOKEN } : {}), ...options.headers },
     });
     const data = await res.json();
     if (!res.ok) {
@@ -30,7 +39,7 @@ async function api(path, options = {}) {
 const post=(path,body,method='POST')=>api(path,{method,body:JSON.stringify(body)});
 function status(text){$('admin-status').textContent=text;}
 function showLogin(){authenticated=false;$('admin-login').hidden=false;$('workspace').hidden=true;}
-async function start(){authenticated=true;$('admin-login').hidden=true;$('workspace').hidden=false;const results = await Promise.allSettled([loadPlan(), loadWeek(), loadMaintenance()]);
+async function start(){authenticated=true;if(EMBED)setTimeout(()=>document.querySelector(`[role=tab][data-panel="${EMBED_VIEW}"]`)?.click(),0);$('admin-login').hidden=true;$('workspace').hidden=false;const results = await Promise.allSettled([loadPlan(), loadWeek(), loadMaintenance()]);
 const failure = results.find(result => result.status === 'rejected');
 if (failure && authenticated) status(failure.reason.message);}
 $('admin-login-form').onsubmit=async e=>{e.preventDefault();$('login-message').textContent='Giriş yapılıyor…';try{await post('admin/login',{password:$('login-password').value});$('login-password').value='';$('login-message').textContent='';await start();}catch(err){$('login-message').textContent=err.message;}};

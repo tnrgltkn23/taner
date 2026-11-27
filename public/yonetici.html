@@ -16,7 +16,6 @@
       <span class="spacer"></span>
       <span id="maint-badge" class="pill red hidden">BAKIM MODU AÇIK</span>
       <span id="live" class="live"><span class="dot"></span><span class="txt">Bağlanıyor…</span></span>
-      <a class="hero-link" href="/mola/">Mola Planı</a>
       <a class="hero-link active" href="/yonetici">Yönetici</a>
       <button class="hero-link" id="logout" type="button">Çıkış</button>
     </header>
@@ -34,6 +33,10 @@
       <button data-tab="daily">Günlük Skor</button>
       <button data-tab="history">Geçmiş Skorlar</button>
       <button data-tab="report">Resmi Rapor</button>
+      <button data-tab="mola-live">Canlı Pano</button>
+      <button data-tab="mola-stats">İstatistik</button>
+      <button data-tab="mola-day-plan">Günün Planı</button>
+      <button data-tab="mola-week">Haftalık Plan</button>
       <button data-tab="panel">Yönetici Paneli</button>
       <button data-tab="logins" id="tab-logins" class="hidden">Giriş Kayıtları</button>
     </nav>
@@ -127,6 +130,11 @@
         <p class="muted small" style="margin:10px 0 0">Her hücrede <b>site / resmi</b>. Kırmızı: uzman resmide olandan az girmiş. Uyum puanı: girilen kayıtların resmi rapora ne kadar yakın olduğu (100 = birebir). Başlıklara tıklayarak sıralayabilirsiniz.</p>
       </div>
     </section>
+
+    <section data-panel="mola-live" class="hidden"><iframe class="mola-frame" title="Canlı Pano" data-src="/mola/?embed=1&amp;view=live"></iframe></section>
+    <section data-panel="mola-stats" class="hidden"><iframe class="mola-frame" title="İstatistik" data-src="/mola/?embed=1&amp;view=stats"></iframe></section>
+    <section data-panel="mola-day-plan" class="hidden"><iframe class="mola-frame" title="Günün Planı" data-src="/mola/?embed=1&amp;view=day-plan"></iframe></section>
+    <section data-panel="mola-week" class="hidden"><iframe class="mola-frame" title="Haftalık Plan" data-src="/mola/?embed=1&amp;view=week"></iframe></section>
 
     <section data-panel="panel" class="hidden">
       <div class="panel-grid">

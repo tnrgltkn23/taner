@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import {
   HttpError, adminClient, check, clientIp, UUID_RE, hashPassword, verifyPassword, DUMMY_HASH,
-  tooMany, recordAttempt, audit, sleep, sessionKey,
+  tooMany, recordAttempt, audit, sleep, sessionKey, requireAdmin,
 } from './_lib/core.js';
 
 const SESSION_S = 8 * 3600;
@@ -16,6 +16,10 @@ const cookie = (v) => `${COOKIE}=${v}; HttpOnly; Secure; SameSite=Strict; Path=/
 const token = (id, ver) => { const body = `${id}.${ver}.${Date.now() + SESSION_S * 1000}`; return `${body}.${sign(body)}`; };
 
 async function currentAdmin(req) {
+  // Yönetici ekranına gömülü kullanım: yönetici ekranının Supabase oturumu (Bearer)
+  if (String(req.headers.authorization || '').startsWith('Bearer ')) {
+    try { const u = await requireAdmin(req); return check(await db().from('users').select('id, role, active, session_version, password_hash').eq('id', u.id).maybeSingle()); } catch { return null; }
+  }
   const m = String(req.headers.cookie || '').match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`));
   const parts = (m ? m[1] : '').split('.');
   if (parts.length !== 4) return null;

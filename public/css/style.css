@@ -289,3 +289,6 @@ body.kpi-like tr.total td { background: #f3eefe; border-top-color: #8b3dff; }
 body.kpi-like .label-navy { background: #2e2258; }
 body.kpi-like .seg button.active { background: #8b3dff; }
 body.kpi-like .section-title, body.kpi-like .group h2 { border-left-color: #8b3dff; }
+
+/* Yönetici ekranındaki Mola Planı sekmeleri */
+.mola-frame { width: 100%; min-height: 80vh; border: 0; border-radius: 16px; background: #fff; box-shadow: var(--shadow); display: block; }

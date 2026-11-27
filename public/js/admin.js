@@ -763,7 +763,11 @@ async function renderLogins() {
 }
 
 // ---------------------------------------------------------------- Sekmeler ve senkronizasyon
-const renderers = { home: renderHome, daily: renderDaily, history: renderHistory, report: renderReport, panel: renderPanel, logins: renderLogins };
+const showMola = (v) => async () => {
+  const f = document.querySelector(`section[data-panel="mola-${v}"] iframe`);
+  if (f && !f.src) f.src = f.dataset.src;
+};
+const renderers = { 'mola-live': showMola('live'), 'mola-stats': showMola('stats'), 'mola-day-plan': showMola('day-plan'), 'mola-week': showMola('week'), home: renderHome, daily: renderDaily, history: renderHistory, report: renderReport, panel: renderPanel, logins: renderLogins };
 setupTabs($('nav'), (t) => { tab = t; refresh(); });
 
 let running = false; let again = false;

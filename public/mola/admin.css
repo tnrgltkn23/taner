@@ -19,3 +19,8 @@
 .admin-plan-table th, .admin-plan-table td { white-space: nowrap; }
 .admin-plan-table tbody th { text-align: left; }
 .admin-plan-table .active-time { font-weight: 700; }
+
+/* Yönetici ekranına gömülü mod */
+.embed .portal-hero, .embed #home-navigation, .embed .site-header, .embed .admin-nav, .embed footer, .embed .admin-login { display: none !important; }
+.embed body { background: transparent; }
+.embed #workspace { margin-top: 0 !important; padding-top: 0 !important; }
