@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102646">
+  <title>KPI Yönetici Paneli · Uzman Mola</title>
+  <link rel="icon" href="/img/uzman-logo-transparent.png">
+  <link rel="stylesheet" href="/portal/fonts.css">
+  <link rel="stylesheet" href="/portal/weather.css?v=6">
+  <link rel="stylesheet" href="/admin/kpi/client.css?v=2">
+  <link rel="stylesheet" href="/admin/kpi/portal.css">
+</head>
+<body class="kpi-admin-page">
+  <div class="portal-hero kpi-admin-scene" data-light="night" aria-hidden="true">
+    <div class="portal-stars"></div>
+    <div class="hero-weather"><span class="hero-sun"></span><div class="hero-precipitation"></div></div>
+  </div>
+  <div id="kpi-admin-root"><p role="status">Yönetici Paneli yükleniyor…</p></div>
+  <noscript>Yönetici Panelini kullanmak için JavaScript’i açın.</noscript>
+  <script type="module" src="/portal/weather.js?v=4"></script>
+  <script type="module" src="/admin/kpi/client.js?v=4"></script>
+</body>
+</html>

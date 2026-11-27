@@ -139,16 +139,16 @@ export function modal({ title, message = '', input = null, ok = 'Tamam', cancel 
 export async function requireSession(role) {
   const client = await getClient();
   const { data } = await client.auth.getSession();
-  if (!data.session) { location.replace('/'); return null; }
+  if (!data.session) { location.replace('/giris'); return null; }
   const { data: user, error } = await client.from('users')
     .select('id, username, role, active').eq('id', await myId(client)).maybeSingle();
   if (error || !user) {
     await client.auth.signOut({ scope: 'local' });
-    location.replace('/?e=oturum');
+    location.replace('/giris?e=oturum');
     return null;
   }
   if (user.role !== role) { location.replace(user.role === 'admin' ? '/yonetici' : '/uzman'); return null; }
-  client.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') location.replace('/'); });
+  client.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') location.replace('/giris'); });
   return { client, user, session: data.session };
 }
 async function myId(client) {
@@ -159,7 +159,7 @@ async function myId(client) {
 export async function logout() {
   const client = await getClient();
   await client.auth.signOut({ scope: 'local' });
-  location.replace('/');
+  location.replace('/giris');
 }
 
 export async function showEnvBadge(el) {

@@ -1,0 +1,151 @@
+:root {
+  --daily-ok: #16684c;
+  --daily-low: #a02649;
+}
+.daily-page [hidden] { display: none !important; }
+.daily-wrap { max-width: 1040px; margin: auto; padding: 24px clamp(16px, 4vw, 44px) 64px; }
+.daily-header, .daily-title, .daily-toolbar, .daily-actions, .daily-tabs, .daily-counter, .daily-account {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+}
+.daily-header { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.daily-header img { display: block; width: 108px; height: 44px; object-fit: contain; }
+.daily-back { color: var(--violet-deep); font-weight: 600; }
+.daily-title { margin: 24px 0 8px; padding: clamp(20px, 4vw, 40px); border: 1px solid #e1cbf8; border-radius: 24px; background: var(--accent-gradient); }
+.daily-title h1 { font-size: clamp(32px, 6vw, 56px); }
+.daily-title p, .daily-card > p { margin-top: 8px; }
+.daily-card { padding: clamp(16px, 3vw, 28px); margin: 16px 0; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); min-width: 0; }
+.daily-card h2, .daily-toolbar h2, .daily-dialog h2 { font: 600 clamp(19px, 3vw, 24px)/1.25 var(--ui); letter-spacing: -.02em; }
+.daily-login { max-width: 470px; }
+.daily-form { display: grid; gap: 14px; margin-top: 18px; }
+.daily-form > .button { justify-self: start; }
+.daily-page label { display: grid; gap: 6px; color: var(--ink); font-size: 14px; font-weight: 600; }
+.daily-page input, .daily-page select {
+  width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px 12px; background: var(--paper); color: var(--ink); font-size: 16px;
+}
+.daily-page select { width: auto; max-width: 100%; }
+.daily-tabs { justify-content: flex-start; margin: 12px 0 20px; }
+.daily-page .daily-tabs .button[aria-pressed="true"] { background: var(--violet); border-color: var(--violet); color: white; }
+.daily-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 285px), 1fr)); gap: 12px; margin-top: 12px; }
+#scores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.daily-score { display: grid; gap: 4px; border: 1px solid #e1cbf8; border-radius: 20px; padding: 16px 18px; background: var(--panel-accent); }
+.daily-score strong { font: 600 32px/1.2 var(--ui); color: var(--ink); font-variant-numeric: tabular-nums; }
+.daily-score small, .daily-hint { color: var(--muted); }
+.daily-score strong[data-rate="ok"] { color: var(--daily-ok); }
+.daily-score strong[data-rate="low"] { color: var(--daily-low); }
+.daily-gsm { max-width: 320px; margin-top: 14px; }
+.daily-counter { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.daily-counter:last-child { border-bottom: 0; }
+.daily-counter strong { min-width: 2ch; color: var(--violet-deep); font-variant-numeric: tabular-nums; }
+.daily-counter > div { display: flex; align-items: center; gap: 10px; }
+.daily-counter .button { padding: 8px 13px; }
+.daily-status { margin-top: 10px; }
+.daily-status:empty { display: none; }
+.daily-status[data-error="true"] { color: var(--daily-low); }
+.daily-table-wrap { overflow-x: auto; margin-top: 12px; }
+.daily-table { width: 100%; white-space: nowrap; }
+.daily-table td, .daily-table th { padding: 12px; text-align: start; color: var(--ink); }
+.daily-table td { background: var(--paper); }
+.daily-dialog { width: min(450px, calc(100% - 32px)); }
+.daily-dialog p { margin: 12px 0 16px; }
+.daily-actions { justify-content: flex-end; }
+.daily-admin-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 12px 0; }
+.daily-admin-filters > label { flex: 1 1 140px; min-width: 0; }
+.daily-admin-filters select { width: 100%; }
+.daily-account { justify-content: flex-start; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.daily-account > span { flex: 1 0 160px; }
+.daily-account form { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; }
+.daily-undo { position: fixed; z-index: 5; bottom: 16px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 12px 14px; border-radius: 16px; box-shadow: 0 8px 24px #11182725; }
+.daily-undo ul { list-style: none; padding: 0; }
+.daily-undo li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; }
+@media (max-width: 520px) {
+  .daily-wrap { padding-top: 12px; }
+  .daily-score { padding: 12px; }
+  .daily-score strong { font-size: 26px; }
+  .daily-tabs .button { flex: 1; padding-inline: 12px; }
+  .daily-title { gap: 12px; }
+}
+
+.daily-manager-nav { gap: 8px; }
+.daily-manager-nav .button { display: inline-flex; align-items: center; }
+.daily-subheading { margin-top: 20px; }
+.daily-page .daily-check { display: flex; align-items: center; align-self: center; gap: 8px; }
+.daily-page .daily-check input { width: 18px; min-height: 18px; accent-color: var(--violet); }
+.daily-list { padding-inline-start: 20px; margin-block: 12px 0; }
+.daily-list li + li { margin-top: 8px; }
+.daily-table td:last-child { white-space: normal; }
+.daily-card :is(h2,h3)[id] { scroll-margin-top: 12px; }
+
+.daily-break {
+  margin: 18px 0 0;
+  padding: clamp(16px, 4vw, 28px);
+  border: 1px solid #e1cbf8;
+  border-radius: 24px;
+  background: var(--accent-gradient);
+}
+.daily-break h2 {
+  font-size: clamp(23px, 5vw, 38px);
+  overflow-wrap: anywhere;
+}
+.daily-break-shift, .daily-break .daily-hint { margin-top: 6px; }
+.daily-break .daily-hint:empty { display: none; }
+.daily-break-countdown { display: grid; gap: 2px; margin-top: 12px; }
+.daily-break-countdown > p:first-child {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+.daily-break-countdown strong {
+  color: var(--violet-deep);
+  font-size: clamp(36px, 8vw, 54px);
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+}
+.daily-break-countdown > p:last-child { font-size: 14px; }
+.daily-break details { margin-top: 10px; }
+.daily-break summary {
+  padding: 3px 0;
+  min-height: 28px;
+  color: var(--violet-deep);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.daily-break ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 118px), 1fr));
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+}
+.daily-break li {
+  display: grid;
+  gap: 1px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: #ffffff8c;
+  font-size: 13px;
+}
+.daily-break li strong { color: var(--ink); }
+.daily-break li[aria-current="true"] { background: var(--lavender); box-shadow: inset 0 0 0 1px var(--orchid); }
+.daily-page:has(.daily-break:not([hidden])) .daily-title {
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.daily-page:has(.daily-break:not([hidden])) .daily-title h1 { font-size: clamp(24px, 5vw, 34px); }
+.daily-page:has(.daily-break:not([hidden])) .daily-title p { margin-top: 5px; font-size: 14px; }
+
+.daily-break .daily-break-retry { margin-top: 8px; }
+
+.daily-break .daily-break-reminders {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--portal-border, #d9bdf5);
+}
+.daily-break-reminders > p { margin-top: 8px; font-size: .875rem; }
+.daily-break-reminders .daily-actions { justify-content: flex-start; margin-top: 10px; }
+.daily-break-reminders .button { min-height: 44px; }

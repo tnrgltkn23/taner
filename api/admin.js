@@ -1,5 +1,6 @@
 // Yönetici işlemleri. Her istek sunucuda doğrulanır (JWT -> kullanıcı -> rol = admin)
 // ve yönetici işlem geçmişine (admin_audit) yazılır.
+import crypto from 'node:crypto';
 import {
   handler, HttpError, adminClient, check, requireAdmin, audit, normUsername, hashPassword, verifyPassword,
   USERNAME_RE, USER_PASSWORD_RE, UUID_RE, ITEMS,
@@ -123,7 +124,7 @@ const actions = {
   async delete_user(me, b) {
     const u = await expertById(uuid(b.id));
     const admin = adminClient();
-    check(await admin.from('users').update({ active: false, updated_at: new Date().toISOString() }).eq('id', u.id));
+    check(await admin.from('users').update({ active: false, session_version: crypto.randomUUID(), updated_at: new Date().toISOString() }).eq('id', u.id));
     check(await admin.rpc('revoke_auth_sessions', { p_user: u.id }));
     return { audit: { username: u.username } };
   },
@@ -133,7 +134,7 @@ const actions = {
     const password = String(b.password || '');
     if (!USER_PASSWORD_RE.test(password)) throw new HttpError(400, 'Şifre 5 haneli rakam olmalıdır');
     const admin = adminClient();
-    check(await admin.from('users').update({ password_hash: hashPassword(password), updated_at: new Date().toISOString() }).eq('id', u.id));
+    check(await admin.from('users').update({ password_hash: hashPassword(password), session_version: crypto.randomUUID(), updated_at: new Date().toISOString() }).eq('id', u.id));
     check(await admin.rpc('revoke_auth_sessions', { p_user: u.id }));
     return { audit: { username: u.username } };
   },
@@ -159,7 +160,7 @@ const actions = {
     if (!verifyPassword(String(b.current || ''), row.password_hash)) throw new HttpError(400, 'Mevcut şifre hatalı');
     const next = String(b.next || '');
     if (next.length < 4 || next.length > 100) throw new HttpError(400, 'Yeni şifre en az 4 karakter olmalı');
-    check(await admin.from('users').update({ password_hash: hashPassword(next), updated_at: new Date().toISOString() }).eq('id', me.id));
+    check(await admin.from('users').update({ password_hash: hashPassword(next), session_version: crypto.randomUUID(), updated_at: new Date().toISOString() }).eq('id', me.id));
     return { audit: {} };
   },
 

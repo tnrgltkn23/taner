@@ -1,0 +1,139 @@
+.kpi-admin-page {
+  --kpi-admin-width: 1240px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  isolation: isolate;
+}
+
+.kpi-admin-page .kpi-admin-scene {
+  --dusk: linear-gradient(180deg, #4a7ff2, #7b7ed8 30%, #c98ab5 65%, #e8a87c);
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.kpi-admin-scene .portal-stars {
+  position: absolute;
+  inset: 0;
+  background: url('/portal/stars.svg') center top / 960px 350px repeat;
+  opacity: .55;
+}
+
+.kpi-admin-page:has(.kpi-admin-dashboard) .kpi-admin-scene {
+  position: absolute;
+  height: clamp(340px, 56vh, 560px);
+  mask-image: linear-gradient(#000 55%, transparent);
+}
+
+:is(html:not([data-theme]), html[data-theme="classic"]) .kpi-admin-page {
+  --primary: #0068d9;
+  --primary-dark: #004fa9;
+  --primary-rgb: 0, 104, 217;
+  --background: #f7f7f7;
+  --surface-soft: #f2f6fc;
+  --surface-hover: #eef5ff;
+  --border: #dde4ed;
+  --border-strong: #b9cce6;
+  --success-soft: #eef5ff;
+  --success-text: #16477c;
+  --text: #283545;
+  --text-strong: #132234;
+  --text-muted: #53647b;
+  --topbar: #fffffff5;
+  --focus: #0068d92e;
+  --shadow: 0 12px 30px #18375612;
+  --primary-shadow: 0 7px 18px #0068d92c;
+}
+
+.kpi-admin-page .admin-login {
+  min-height: 100svh;
+  background: transparent;
+  padding: 24px 16px;
+}
+
+.kpi-admin-page .admin-login-card {
+  width: min(100%, 440px);
+  padding: clamp(20px, 4vw, 34px);
+  border-radius: 30px;
+  box-shadow: 0 24px 80px #10264656;
+}
+
+.kpi-admin-page .admin-login-logo {
+  width: 138px;
+  margin-bottom: 12px;
+}
+
+.kpi-admin-page .page-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(28px, 4.5vw, 38px);
+  font-weight: 400;
+  letter-spacing: -.03em;
+}
+
+.kpi-admin-page .btn { border-radius: 50px; font-size: 14px; }
+
+.kpi-admin-page :is(button, a, input):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.kpi-pin-form { display: grid; justify-items: center; gap: 14px; margin-top: 20px; }
+.kpi-pin-field { display: block; width: min(100%, 254px); text-align: start; }
+.kpi-pin-field .label { font-size: 14px; }
+.kpi-admin-page .kpi-pin-input {
+  min-height: 50px;
+  text-align: center;
+  font-size: 22px;
+  letter-spacing: .35em;
+  padding-inline-start: calc(12px + .35em);
+}
+.kpi-pin-submit { width: min(100%, 254px); }
+.kpi-pin-form .login-change-button { margin: 0; }
+.kpi-admin-page .pin-key { height: 44px; }
+.kpi-admin-page .pin-key:disabled { opacity: .65; cursor: wait; }
+
+.kpi-admin-dashboard { min-height: 100svh; padding: 16px 18px 36px; }
+.kpi-admin-header, .kpi-admin-content { width: min(100%, var(--kpi-admin-width)); margin-inline: auto; }
+.kpi-admin-header {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: var(--topbar);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+}
+.kpi-admin-brand { flex: none; }
+.kpi-admin-brand img { width: 112px; height: auto; }
+.kpi-admin-account { min-width: 0; }
+.kpi-admin-account strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kpi-admin-actions { display: flex; gap: 8px; margin-inline-start: auto; }
+.kpi-admin-actions .btn { min-width: 44px; padding-inline: 12px; }
+.kpi-admin-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; margin-top: 20px; }
+.kpi-admin-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.kpi-admin-tabs .btn { flex: 0 0 auto; white-space: nowrap; box-shadow: none; }
+.kpi-admin-content .card { border-radius: 22px; }
+
+@media (max-width: 480px) {
+  .kpi-admin-dashboard { padding-inline: 10px; }
+  .kpi-admin-header { gap: 10px; padding-inline: 10px; }
+  .kpi-admin-brand img { width: 78px; }
+  .kpi-admin-account .eyebrow { font-size: 10px; }
+  .kpi-admin-account strong { font-size: 13px; }
+}
