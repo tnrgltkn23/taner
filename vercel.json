@@ -110,12 +110,12 @@
   ],
   "rewrites": [
     {
-      "source": "/api/kpi/:path*",
-      "destination": "/api/kpi?r=:path*"
-    },
-    {
       "source": "/api/weather/elazig",
       "destination": "/api/weather"
+    },
+    {
+      "source": "/api/mola/:path*",
+      "destination": "/api/mola?r=:path*"
     }
   ]
 }
