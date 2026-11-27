@@ -302,3 +302,10 @@ body.kpi-like .section-title, body.kpi-like .group h2 { border-left-color: #8b3d
 .birthday .bd-msg { margin-top: 4px; font-weight: 700; color: #ffe08a; letter-spacing: .3px; }
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
 @keyframes bd-pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* Doğum günü banner'ı: giriş kartıyla aynı genişlik ve görünüm */
+.birthday { max-width: 400px; padding: 14px 18px; border-radius: var(--radius); background: rgba(255,255,255,.96); color: var(--text);
+  border: 1px solid #e7e1f3; border-top: 4px solid #8b3dff; box-shadow: var(--shadow); }
+.birthday .bd-icon { font-size: 26px; }
+.birthday .bd-names { font-size: 22px; color: #2e2258; }
+.birthday .bd-msg { color: #8b3dff; font-size: 14px; }
