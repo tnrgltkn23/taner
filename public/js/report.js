@@ -12,7 +12,7 @@ import { ITEMS, rates } from './common.js';
 
 const norm = (s) => String(s ?? '').trim().toLocaleLowerCase('tr').normalize('NFD').replace(/\p{M}/gu, '').replace(/ı/g, 'i');
 
-function loadSheetJs() {
+export function loadSheetJs() {
   if (window.XLSX) return Promise.resolve(window.XLSX);
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');

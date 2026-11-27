@@ -392,6 +392,7 @@ async function renderReport() {
     per.set(r.user_id, p);
   }
   const list = [...per.values()].map((p) => ({ ...p, rs: rates(p.site), ro: rates(p.off), uyum: agreement(p.site, p.off), fl: flags(p.site, p.off) }));
+  rLast = { list, from, to, days, team: $('r-team').value };
 
   // Özet kartları
   const S = emptyTotals(); const O = emptyTotals();
@@ -419,6 +420,49 @@ async function renderReport() {
     || `<tr><td colspan="11" class="empty">${days ? 'Bu dönemde karşılaştırılacak uzman yok.' : 'Önce resmi raporu yükleyin.'}</td></tr>`;
   $('r-table').innerHTML = `<thead><tr>${th('name', 'Kullanıcı', true)}${R_COLS.map((c) => th(c.key, c.label)).join('')}<th class="left">Uyarılar</th></tr></thead><tbody>${body}</tbody>`;
 }
+// Excel çıktısı: ekrandaki dönem, takım filtresi ve sıralamayla aynı liste
+let rLast = null;
+$('r-export').addEventListener('click', async () => {
+  if (!rLast || !rLast.days || !rLast.list.length) return toast('Dışa aktarılacak karşılaştırma yok', 'error');
+  try {
+    const { loadSheetJs } = await import('./report.js');
+    const XLSX = await loadSheetJs();
+    const { list, from, to, days, team } = rLast;
+    const r1 = (v) => (v === null ? '' : Math.round(v * 1000) / 10); // oran → yüzde (1 ondalık)
+    const teamLabel = !team ? 'Tümü' : team === NO_TEAM ? 'Takımı yok' : teamName(team);
+    const head = ['Kullanıcı', 'Takım lideri'];
+    for (const i of ITEMS) head.push(`${i.label} (site)`, `${i.label} (resmi)`, `${i.label} (fark)`);
+    head.push('Post Pre % (site)', 'Post Pre % (resmi)', 'Post Pre fark (puan)', 'Savedesk % (site)', 'Savedesk % (resmi)', 'Savedesk fark (puan)', 'Uyum %', 'Uyarılar');
+    const line = (name, tl, site, off, uyum, fl) => {
+      const rs = rates(site); const ro = rates(off);
+      const row = [name, tl];
+      for (const i of ITEMS) row.push(site[i.code], off[i.code], site[i.code] - off[i.code]);
+      row.push(r1(rs.pp), r1(ro.pp), rs.pp === null || ro.pp === null ? '' : r1(rs.pp - ro.pp),
+        r1(rs.sd), r1(ro.sd), rs.sd === null || ro.sd === null ? '' : r1(rs.sd - ro.sd), uyum === null ? '' : Math.round(uyum * 100), fl);
+      return row;
+    };
+    const S = emptyTotals(); const O = emptyTotals();
+    const body = list.map((p) => {
+      ITEMS.forEach((i) => { S[i.code] += p.site[i.code]; O[i.code] += p.off[i.code]; });
+      return line(p.u.username, teamName(p.u.team_leader_id) || '', p.site, p.off, p.uyum, p.fl.map((f) => f[1]).join(', '));
+    });
+    const { agreement } = await import('./report.js');
+    const info = [
+      ['Resmi rapor karşılaştırması'],
+      ['Dönem', from === to ? fmtShort(from) : `${fmtShort(from)} – ${fmtShort(to)}`, 'Karşılaştırılan gün', days],
+      ['Takım lideri', teamLabel, 'Oluşturulma', fmtDateTime(new Date().toISOString())],
+      ['Not', '"site" = uzmanın sitede girdiği, "resmi" = Churn Aktivite raporu, fark = site − resmi (eksi: uzman eksik girmiş)'],
+      [],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([...info, head, ...body, line('GENEL TOPLAM', '', S, O, agreement(S, O), '')]);
+    ws['!cols'] = head.map((h, i) => ({ wch: i === 0 ? 20 : i === 1 ? 18 : i === head.length - 1 ? 40 : Math.max(10, Math.min(18, h.length)) }));
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: info.length, c: 0 }, e: { r: info.length + body.length, c: head.length - 1 } }) };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Karşılaştırma');
+    XLSX.writeFile(wb, `Resmi-Rapor-Karsilastirma_${from}${from === to ? '' : '_' + to}.xlsx`);
+  } catch (e) { toast(e.message, 'error'); }
+});
+
 $('r-table').addEventListener('click', (ev) => {
   const t = ev.target.closest('th[data-rsort]');
   if (!t) return;
