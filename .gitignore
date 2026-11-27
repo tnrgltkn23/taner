@@ -1,5 +1,7 @@
 node_modules/
-public/vendor/
+public/vendor/supabase.js
+public/vendor/xlsx.full.min.js
+public/vendor/exceljs.min.js
 .vercel/
 .env
 .env.*

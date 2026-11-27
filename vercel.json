@@ -3,19 +3,39 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "cleanUrls": true,
-  "regions": ["dub1"],
+  "regions": [
+    "dub1"
+  ],
   "crons": [
-    { "path": "/api/cron/daily", "schedule": "0 0 * * *" }
+    {
+      "path": "/api/cron/daily",
+      "schedule": "0 0 * * *"
+    }
   ],
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/((?!kpi|ikna).*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
@@ -23,8 +43,79 @@
       ]
     },
     {
+      "source": "/(kpi|ikna)/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+        }
+      ]
+    },
+    {
       "source": "/api/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/admin",
+      "destination": "/yonetici",
+      "permanent": false
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/yonetici",
+      "permanent": false
+    },
+    {
+      "source": "/gunluk-verilerim/:path*",
+      "destination": "/uzman",
+      "permanent": false
+    },
+    {
+      "source": "/benim-molam/:path*",
+      "destination": "/uzman",
+      "permanent": false
+    },
+    {
+      "source": "/ikna",
+      "destination": "/ikna/",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/kpi/:path*",
+      "destination": "/api/kpi?r=:path*"
+    },
+    {
+      "source": "/api/weather/elazig",
+      "destination": "/api/weather"
     }
   ]
 }
