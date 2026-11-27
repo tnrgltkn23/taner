@@ -21,7 +21,7 @@
     { "source": "/", "destination": "/api/portal?r=page/home" },
     { "source": "/ikna/", "destination": "/api/portal?r=page/ikna" },
     { "source": "/api/daily/:path*", "destination": "/api/portal?r=daily/:path*" },
-    { "source": "/api/admin/:path+", "destination": "/api/portal?r=admin/:path+" },
+    { "source": "/api/admin/:path*", "destination": "/api/portal?r=admin/:path*" },
     { "source": "/api/state", "destination": "/api/portal?r=state" },
     { "source": "/api/weather/elazig", "destination": "/api/portal?r=weather" },
     { "source": "/api/kpi/:path*", "destination": "/api/portal?r=kpi/:path*" }
