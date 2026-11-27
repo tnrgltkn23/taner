@@ -8,10 +8,29 @@
   
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="scene">
-  <header class="topbar"><div class="topbar-inner">
-    <div class="brand"><img src="/img/pusulacx-logo.png" alt="Pusula CX" width="119" height="34"><span class="app">Yönetici Paneli</span> <span id="env" class="env-badge hidden"></span></div>
-    <nav class="tabs" id="nav">
+<body class="kpi-like">
+  <section class="hero-scene">
+    <header class="hero-nav">
+      <a class="hero-logo" href="/yonetici"><img src="/img/taner-eren-logo.png" alt="Taner &amp; Eren" height="72"></a>
+      <span id="env" class="env-badge hidden"></span>
+      <span class="spacer"></span>
+      <span id="maint-badge" class="pill red hidden">BAKIM MODU AÇIK</span>
+      <span id="live" class="live"><span class="dot"></span><span class="txt">Bağlanıyor…</span></span>
+      <a class="hero-link" href="/kpi/">KPI Performans</a>
+      <a class="hero-link" href="/ikna/">İkna Rehberi</a>
+      <a class="hero-link active" href="/yonetici">Yönetici</a>
+      <button class="hero-link" id="logout" type="button">Çıkış</button>
+    </header>
+    <div class="hero-text">
+      <h1>Ekibin skorları, tek yerde.</h1>
+      <p>Post Pre, Savedesk ve Take Rate sonuçlarını takip et, resmi raporla karşılaştır, hedefe ne kadar kaldığını gör.</p>
+    </div>
+    <img class="hero-mascot" src="/portal/mascot-right.webp" alt="" aria-hidden="true">
+  </section>
+
+  <div class="page-head">
+    <div class="page-title"><h1>Yönetici Paneli</h1><span class="pill gray">Pusula CX</span></div>
+    <nav class="pill-tabs" id="nav">
       <button data-tab="home" class="active">Ana Sayfa</button>
       <button data-tab="daily">Günlük Skor</button>
       <button data-tab="history">Geçmiş Skorlar</button>
@@ -19,12 +38,7 @@
       <button data-tab="panel">Yönetici Paneli</button>
       <button data-tab="logins" id="tab-logins" class="hidden">Giriş Kayıtları</button>
     </nav>
-    <span class="spacer"></span>
-    <span id="maint-badge" class="pill red hidden">BAKIM MODU AÇIK</span>
-    <span id="live" class="live"><span class="dot"></span><span class="txt">Bağlanıyor…</span></span>
-    <a class="btn sm ghost" href="/kpi/">KPI Performans</a><a class="btn sm ghost" href="/ikna/">İkna Rehberi</a>
-    <button class="btn sm ghost" id="logout" type="button">Çıkış</button>
-  </div></header>
+  </div>
 
   <main>
     <!-- Ana sayfa: tüm uzmanların toplam oranları -->
