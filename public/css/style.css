@@ -236,3 +236,8 @@ td.editable:hover { background: var(--amber-soft) !important; }
 
 /* Giriş sayfası arka planı: KPI Performans sayfasındaki gece manzarası */
 .login-wrap { background: linear-gradient(180deg, #0b183079, #142b4960 58%, #081421c4), url('/portal/dusk-open.webp') center 67% / cover no-repeat, linear-gradient(180deg,#4a7ff2,#7b7ed8 30%,#c98ab5 65%,#e8a87c); }
+
+/* Uzman ve yönetici ekranları: KPI Performans sayfasındaki gece manzarası arka plan */
+body.scene { background: linear-gradient(180deg, #0b183079, #142b4960 58%, #081421c4), url('/portal/dusk-open.webp') center 67% / cover no-repeat fixed, #1b2a4a; }
+body.scene .home-head h1, body.scene .home-head p, body.scene .section-title, body.scene .section-title .muted { color: #fff; }
+body.scene .section-title { border-left-color: var(--brand); }
