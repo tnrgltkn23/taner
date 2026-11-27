@@ -27,3 +27,12 @@ if (!existsSync(xlsxSrc)) {
 }
 copyFileSync(xlsxSrc, join(outDir, 'xlsx.full.min.js'));
 console.log('SheetJS kopyalandı ->', join(outDir, 'xlsx.full.min.js'));
+
+// Biçimli Excel çıktısı (renkli yazı, zemin, kenarlık) için ExcelJS tarayıcı paketi.
+const excelSrc = join(root, 'node_modules', 'exceljs', 'dist', 'exceljs.min.js');
+if (!existsSync(excelSrc)) {
+  console.error('ExcelJS paketi bulunamadı:', excelSrc);
+  process.exit(1);
+}
+copyFileSync(excelSrc, join(outDir, 'exceljs.min.js'));
+console.log('ExcelJS kopyalandı ->', join(outDir, 'exceljs.min.js'));

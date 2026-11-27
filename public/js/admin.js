@@ -420,47 +420,135 @@ async function renderReport() {
     || `<tr><td colspan="11" class="empty">${days ? 'Bu dönemde karşılaştırılacak uzman yok.' : 'Önce resmi raporu yükleyin.'}</td></tr>`;
   $('r-table').innerHTML = `<thead><tr>${th('name', 'Kullanıcı', true)}${R_COLS.map((c) => th(c.key, c.label)).join('')}<th class="left">Uyarılar</th></tr></thead><tbody>${body}</tbody>`;
 }
-// Excel çıktısı: ekrandaki dönem, takım filtresi ve sıralamayla aynı liste
+// Excel çıktısı: sitedeki tabloyla aynı düzen ve renkler (ExcelJS ile biçimli dosya).
+// Her kalem hücresi "site / resmi": site adedi turuncu, resmi adet koyu gri.
 let rLast = null;
+function loadExcelJs() {
+  if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/vendor/exceljs.min.js?v=4.4.0';
+    s.onload = () => resolve(window.ExcelJS);
+    s.onerror = () => reject(new Error('Excel oluşturucu yüklenemedi'));
+    document.head.appendChild(s);
+  });
+}
 $('r-export').addEventListener('click', async () => {
   if (!rLast || !rLast.days || !rLast.list.length) return toast('Dışa aktarılacak karşılaştırma yok', 'error');
+  const btn = $('r-export');
+  btn.disabled = true;
   try {
-    const { loadSheetJs } = await import('./report.js');
-    const XLSX = await loadSheetJs();
+    const [ExcelJS, { agreement }] = await Promise.all([loadExcelJs(), import('./report.js')]);
     const { list, from, to, days, team } = rLast;
-    const r1 = (v) => (v === null ? '' : Math.round(v * 1000) / 10); // oran → yüzde (1 ondalık)
-    const teamLabel = !team ? 'Tümü' : team === NO_TEAM ? 'Takımı yok' : teamName(team);
-    const head = ['Kullanıcı', 'Takım lideri'];
-    for (const i of ITEMS) head.push(`${i.label} (site)`, `${i.label} (resmi)`, `${i.label} (fark)`);
-    head.push('Post Pre % (site)', 'Post Pre % (resmi)', 'Post Pre fark (puan)', 'Savedesk % (site)', 'Savedesk % (resmi)', 'Savedesk fark (puan)', 'Uyum %', 'Uyarılar');
-    const line = (name, tl, site, off, uyum, fl) => {
-      const rs = rates(site); const ro = rates(off);
-      const row = [name, tl];
-      for (const i of ITEMS) row.push(site[i.code], off[i.code], site[i.code] - off[i.code]);
-      row.push(r1(rs.pp), r1(ro.pp), rs.pp === null || ro.pp === null ? '' : r1(rs.pp - ro.pp),
-        r1(rs.sd), r1(ro.sd), rs.sd === null || ro.sd === null ? '' : r1(rs.sd - ro.sd), uyum === null ? '' : Math.round(uyum * 100), fl);
-      return row;
+    const C = {
+      site: 'FFE67E22', off: 'FF555555', navy: 'FF464646', brand: 'FF52BAAA', brandSoft: 'FFE6F5F2',
+      redSoft: 'FFFDE4E4', red: 'FFC62828', amberSoft: 'FFFFF4D6', amber: 'FF8A5A00', ok: 'FF1E8E3E', border: 'FFDFE6E4', muted: 'FF6B7472',
     };
+    const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+    const thin = { style: 'thin', color: { argb: C.border } };
+    const box = { top: thin, left: thin, bottom: thin, right: thin };
+    const pairText = (s, o, fmt = (v) => String(v)) => ({ richText: [
+      { text: fmt(s), font: { bold: true, color: { argb: C.site }, size: 11 } },
+      { text: ' / ', font: { color: { argb: C.muted }, size: 10 } },
+      { text: fmt(o), font: { color: { argb: C.off }, size: 10 } },
+    ] });
+    const pctTxt = (r) => (r === null ? '—' : '%' + (Math.round(r * 1000) / 10).toLocaleString('tr-TR'));
+    const ptsTxt = (a, b) => (a === null || b === null || Math.abs(a - b) < 0.0005 ? '' : `${a - b > 0 ? '+' : '−'}${(Math.abs(a - b) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} puan`);
+    const rateCell = (s, o) => {
+      const v = pairText(s, o, pctTxt);
+      const d = ptsTxt(s, o);
+      if (d) v.richText.push({ text: '\n' + d, font: { bold: true, size: 9, color: { argb: s > o ? C.red : C.ok } } });
+      return v;
+    };
+    const teamLabel = !team ? 'Tümü' : team === NO_TEAM ? 'Takımı yok' : teamName(team);
+    const period = from === to ? fmtLong(from) : `${fmtShort(from)} – ${fmtShort(to)}`;
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Uzman Hedef Takip';
+    const ws = wb.addWorksheet('Karşılaştırma', { views: [{ state: 'frozen', ySplit: 6 }], pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+    const head = ['Kullanıcı', 'Takım lideri', ...ITEMS.map((i) => i.label), 'Post Pre %', 'Savedesk %', 'Uyum', 'Uyarılar'];
+    ws.columns = head.map((h, i) => ({ width: i === 0 ? 22 : i === 1 ? 18 : i === head.length - 1 ? 34 : i >= 8 && i <= 9 ? 17 : 13 }));
+    const last = head.length;
+
+    // Başlık ve açıklama
+    ws.mergeCells(1, 1, 1, last);
+    Object.assign(ws.getCell(1, 1), { value: 'Resmi Rapor Karşılaştırması', font: { bold: true, size: 15, color: { argb: C.navy } } });
+    ws.mergeCells(2, 1, 2, last);
+    Object.assign(ws.getCell(2, 1), { value: `${period} · Takım lideri: ${teamLabel} · Resmi raporu olan ${days} gün · Oluşturulma: ${fmtDateTime(new Date().toISOString())}`, font: { size: 10, color: { argb: C.muted } } });
+    ws.mergeCells(3, 1, 3, last);
+    ws.getCell(3, 1).value = { richText: [
+      { text: 'Her hücrede ', font: { size: 10, color: { argb: C.muted } } },
+      { text: 'site', font: { bold: true, size: 10, color: { argb: C.site } } },
+      { text: ' / ', font: { size: 10, color: { argb: C.muted } } },
+      { text: 'resmi', font: { size: 10, color: { argb: C.off } } },
+      { text: '.  Kırmızı zemin: uzman resmide olandan az girmiş.  Turuncu zemin: fazla girmiş.  Uyum: girilenlerin resmi rapora yakınlığı (100 = birebir).', font: { size: 10, color: { argb: C.muted } } },
+    ] };
+
+    // Özet satırı (sitedeki kartlar)
     const S = emptyTotals(); const O = emptyTotals();
-    const body = list.map((p) => {
-      ITEMS.forEach((i) => { S[i.code] += p.site[i.code]; O[i.code] += p.off[i.code]; });
-      return line(p.u.username, teamName(p.u.team_leader_id) || '', p.site, p.off, p.uyum, p.fl.map((f) => f[1]).join(', '));
-    });
-    const { agreement } = await import('./report.js');
-    const info = [
-      ['Resmi rapor karşılaştırması'],
-      ['Dönem', from === to ? fmtShort(from) : `${fmtShort(from)} – ${fmtShort(to)}`, 'Karşılaştırılan gün', days],
-      ['Takım lideri', teamLabel, 'Oluşturulma', fmtDateTime(new Date().toISOString())],
-      ['Not', '"site" = uzmanın sitede girdiği, "resmi" = Churn Aktivite raporu, fark = site − resmi (eksi: uzman eksik girmiş)'],
-      [],
+    for (const p of list) ITEMS.forEach((i) => { S[i.code] += p.site[i.code]; O[i.code] += p.off[i.code]; });
+    const rs = rates(S); const ro = rates(O); const su = agreement(S, O);
+    const summary = [
+      ['Post Pre %', rateCell(rs.pp, ro.pp)], ['Savedesk %', rateCell(rs.sd, ro.sd)],
+      ['Olumsuz kayıt (14271+17891)', pairText(S.pp_14271 + S.sd_17891, O.pp_14271 + O.sd_17891)],
+      ['Genel uyum', { richText: [{ text: su === null ? '—' : '%' + Math.round(su * 100), font: { bold: true, size: 12, color: { argb: su !== null && su < 0.9 ? C.red : C.ok } } }] }],
     ];
-    const ws = XLSX.utils.aoa_to_sheet([...info, head, ...body, line('GENEL TOPLAM', '', S, O, agreement(S, O), '')]);
-    ws['!cols'] = head.map((h, i) => ({ wch: i === 0 ? 20 : i === 1 ? 18 : i === head.length - 1 ? 40 : Math.max(10, Math.min(18, h.length)) }));
-    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: info.length, c: 0 }, e: { r: info.length + body.length, c: head.length - 1 } }) };
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Karşılaştırma');
-    XLSX.writeFile(wb, `Resmi-Rapor-Karsilastirma_${from}${from === to ? '' : '_' + to}.xlsx`);
+    summary.forEach(([label, value], k) => {
+      const col = 1 + k * 2;
+      ws.mergeCells(4, col, 4, col + 1); ws.mergeCells(5, col, 5, col + 1);
+      Object.assign(ws.getCell(4, col), { value: label.toLocaleUpperCase('tr-TR'), font: { bold: true, size: 9, color: { argb: C.navy } }, alignment: { horizontal: 'center' }, fill: fill(C.brandSoft), border: box });
+      Object.assign(ws.getCell(5, col), { value, alignment: { horizontal: 'center', vertical: 'middle', wrapText: true }, border: box });
+    });
+    ws.getRow(5).height = 32;
+
+    // Tablo başlığı
+    const hr = ws.getRow(6);
+    head.forEach((h, i) => Object.assign(hr.getCell(i + 1), {
+      value: h, font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }, fill: fill(C.navy), border: box,
+      alignment: { horizontal: i < 2 || i === last - 1 ? 'left' : 'center', vertical: 'middle', wrapText: true },
+    }));
+    hr.height = 22;
+
+    // Uzman satırları
+    const addRow = (name, tl, site, off, uyum, flagsText, isTotal = false) => {
+      const r = ws.addRow([]);
+      const rs2 = rates(site); const ro2 = rates(off);
+      Object.assign(r.getCell(1), { value: name, font: { bold: true, color: { argb: C.navy } } });
+      Object.assign(r.getCell(2), { value: tl, font: { size: 10, color: { argb: C.muted } } });
+      ITEMS.forEach((i, k) => {
+        const c = r.getCell(3 + k);
+        c.value = pairText(site[i.code], off[i.code]);
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+        if (site[i.code] < off[i.code]) c.fill = fill(C.redSoft);
+        else if (site[i.code] > off[i.code]) c.fill = fill(C.amberSoft);
+      });
+      Object.assign(r.getCell(9), { value: rateCell(rs2.pp, ro2.pp), alignment: { horizontal: 'center', vertical: 'middle', wrapText: true } });
+      Object.assign(r.getCell(10), { value: rateCell(rs2.sd, ro2.sd), alignment: { horizontal: 'center', vertical: 'middle', wrapText: true } });
+      Object.assign(r.getCell(11), {
+        value: uyum === null ? '—' : '%' + Math.round(uyum * 100), alignment: { horizontal: 'center', vertical: 'middle' },
+        font: { bold: true, color: { argb: uyum === null ? C.muted : uyum >= 0.9 ? C.ok : C.red } },
+      });
+      Object.assign(r.getCell(12), { value: flagsText, font: { size: 10, color: { argb: C.red } }, alignment: { wrapText: true, vertical: 'middle' } });
+      for (let k = 1; k <= last; k++) {
+        const c = r.getCell(k);
+        c.border = box;
+        if (isTotal) { c.fill = c.fill?.fgColor?.argb === C.redSoft || c.fill?.fgColor?.argb === C.amberSoft ? c.fill : fill(C.brandSoft); }
+        if (k <= 2) c.alignment = { ...(c.alignment || {}), vertical: 'middle' };
+      }
+      if (isTotal) r.getCell(1).border = { ...box, top: { style: 'medium', color: { argb: C.brand } } };
+      r.height = 30;
+    };
+    for (const p of list) addRow(p.u.username, teamName(p.u.team_leader_id) || '—', p.site, p.off, p.uyum, p.fl.map((f) => f[1]).join(' · '));
+    addRow('GENEL TOPLAM', '', S, O, su, '', true);
+
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `Resmi-Rapor-Karsilastirma_${from}${from === to ? '' : '_' + to}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
   } catch (e) { toast(e.message, 'error'); }
+  finally { btn.disabled = false; }
 });
 
 $('r-table').addEventListener('click', (ev) => {
