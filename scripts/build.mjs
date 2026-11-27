@@ -18,3 +18,12 @@ const outDir = join(root, 'public', 'vendor');
 mkdirSync(outDir, { recursive: true });
 copyFileSync(src, join(outDir, 'supabase.js'));
 console.log('supabase-js kopyalandı ->', join(outDir, 'supabase.js'));
+
+// Resmi rapor (Excel) tarayıcıda okunur: SheetJS tam paketi public/vendor altına kopyalanır.
+const xlsxSrc = join(root, 'node_modules', 'xlsx', 'dist', 'xlsx.full.min.js');
+if (!existsSync(xlsxSrc)) {
+  console.error('SheetJS paketi bulunamadı:', xlsxSrc);
+  process.exit(1);
+}
+copyFileSync(xlsxSrc, join(outDir, 'xlsx.full.min.js'));
+console.log('SheetJS kopyalandı ->', join(outDir, 'xlsx.full.min.js'));

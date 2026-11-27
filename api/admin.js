@@ -120,6 +120,46 @@ const actions = {
     return { result: rows, noAudit: true };
   },
 
+  // Resmi rapor: tarayıcı Excel'i kişi × gün × kalem toplamlarına indirger; burada kaydedilir.
+  // Yüklenen günlerin eski resmi verisi silinip yenisiyle değiştirilir (düzeltilmiş rapor yüklenebilir).
+  async upload_official(me, b) {
+    const filename = String(b.filename || 'rapor').slice(0, 200);
+    const rows = Array.isArray(b.rows) ? b.rows : [];
+    if (!rows.length || rows.length > 50000) throw new HttpError(400, 'Raporda aktarılacak satır bulunamadı');
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date());
+    const clean = new Map();
+    for (const r of rows) {
+      const day = isoDate(r.day);
+      const username = String(r.username || '').trim().toLowerCase();
+      const total = Number(r.total);
+      if (day >= today) continue; // bugünün verisi henüz tamamlanmadı
+      if (!/^[a-z0-9._-]{2,60}$/.test(username) || !ITEMS.includes(r.item) || !Number.isInteger(total) || total < 0 || total > 100000) {
+        throw new HttpError(400, 'Raporda geçersiz satır var');
+      }
+      const key = `${day}|${username}|${r.item}`;
+      clean.set(key, { day, username, item: r.item, total: (clean.get(key)?.total || 0) + total });
+    }
+    if (!clean.size) throw new HttpError(400, 'Raporda dünden önceye ait veri bulunamadı');
+    const db = adminClient();
+    const users = check(await db.from('users').select('id, username').eq('role', 'expert'));
+    const byName = new Map(users.map((u) => [u.username, u.id]));
+    const list = [...clean.values()].map((r) => ({ ...r, user_id: byName.get(r.username) || null }));
+    const days = [...new Set(list.map((r) => r.day))].sort();
+    const matched = new Set(list.filter((r) => r.user_id).map((r) => r.username));
+
+    const up = check(await db.from('official_uploads').insert({
+      filename, day_from: days[0], day_to: days[days.length - 1], row_count: list.length, matched: matched.size, uploaded_by: me.id,
+    }).select('id').single());
+    check(await db.from('official_totals').delete().in('day', days));
+    for (let i = 0; i < list.length; i += 1000) {
+      check(await db.from('official_totals').insert(list.slice(i, i + 1000).map((r) => ({ ...r, upload_id: up.id }))));
+    }
+    return {
+      result: { days: days.length, day_from: days[0], day_to: days[days.length - 1], rows: list.length, matched: matched.size },
+      audit: { filename, day_from: days[0], day_to: days[days.length - 1], matched: matched.size },
+    };
+  },
+
   async delete_user(me, b) {
     const u = await expertById(uuid(b.id));
     const admin = adminClient();

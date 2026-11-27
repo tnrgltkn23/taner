@@ -324,12 +324,115 @@ $('h-table').addEventListener('click', (ev) => {
   if (c && uid) editCount(uid, c.dataset.day, c.dataset.item, Number(c.dataset.val));
 });
 
+// ---------------------------------------------------------------- Resmi rapor karşılaştırması
+let rPeriod = 'day';
+let rSort = { key: 'uyum', dir: 1 };
+let rDefaultSet = false;
+$('r-period').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-p]');
+  if (!b || b.dataset.p === rPeriod) return;
+  rPeriod = b.dataset.p;
+  $('r-period').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+  $('r-day').classList.toggle('hidden', rPeriod !== 'day');
+  $('r-month').classList.toggle('hidden', rPeriod !== 'month');
+  renderReport().catch((e) => toast(e.message, 'error'));
+});
+['r-day', 'r-month', 'r-team'].forEach((id) => $(id).addEventListener('change', () => renderReport().catch((e) => toast(e.message, 'error'))));
+
+$('r-upload').addEventListener('click', async () => {
+  const file = $('r-file').files[0];
+  if (!file) return toast('Önce rapor dosyasını seçin', 'error');
+  const btn = $('r-upload');
+  btn.disabled = true;
+  try {
+    $('r-status').textContent = 'Dosya okunuyor…';
+    const { parseChurnReport } = await import('./report.js');
+    const { rows, days } = await parseChurnReport(file);
+    if (!rows.length) throw new Error('Raporda 484/16234/14271/17891 kaydı bulunamadı');
+    $('r-status').textContent = `${days.length} gün, ${rows.length} satır gönderiliyor…`;
+    const { result } = await adminApi('upload_official', { filename: file.name, rows });
+    $('r-status').textContent = '';
+    toast(`Resmi rapor yüklendi: ${fmtShort(result.day_from)}–${fmtShort(result.day_to)}, ${result.matched} uzman eşleşti`, 'success');
+    $('r-day').value = result.day_to; $('r-month').value = result.day_to.slice(0, 7);
+    $('r-file').value = '';
+    await renderReport();
+  } catch (e) { $('r-status').textContent = ''; toast(e.message, 'error'); }
+  finally { btn.disabled = false; }
+});
+
+const R_COLS = [
+  ...ITEMS.map((i) => ({ key: i.code, label: i.label })),
+  { key: 'pp', label: 'Post Pre %' }, { key: 'sd', label: 'Savedesk %' }, { key: 'uyum', label: 'Uyum' },
+];
+const ptDiff = (a, b) => (a === null || b === null ? '' : `${a - b >= 0 ? '+' : '−'}${fmt1((a - b) * 100)}`);
+
+async function renderReport() {
+  const { agreement, flags } = await import('./report.js');
+  if (!rDefaultSet) {
+    rDefaultSet = true;
+    const last = unwrap(await client.from('official_uploads').select('filename, day_to, uploaded_at').order('uploaded_at', { ascending: false }).limit(1));
+    const d = last[0]?.day_to || istanbulToday();
+    $('r-day').value = d; $('r-month').value = d.slice(0, 7);
+    $('r-last').textContent = last[0] ? `Son yükleme: ${last[0].filename} · ${fmtDateTime(last[0].uploaded_at)}` : 'Henüz rapor yüklenmedi';
+  }
+  fillSelect($('r-team'), [{ v: '', l: 'Tümü' }, ...teams.map((t) => ({ v: t.id, l: t.name })), { v: NO_TEAM, l: '(Takımı yok)' }]);
+  let from; let to;
+  if (rPeriod === 'day') { from = to = $('r-day').value || istanbulToday(); } else { ({ from, to } = monthRange($('r-month').value || istanbulToday().slice(0, 7))); }
+
+  const rows = unwrap(await client.rpc('report_compare', { p_from: from, p_to: to }));
+  const days = rows[0]?.days_count ?? 0;
+  $('r-sub').textContent = days ? `${rPeriod === 'day' ? fmtLong(from) : `${fmtShort(from)}–${fmtShort(to)}`} · resmi raporu olan ${days} gün karşılaştırıldı` : 'Bu dönem için resmi rapor yüklenmemiş';
+  const keep = teamFilter($('r-team').value);
+  const per = new Map();
+  for (const r of rows) {
+    const u = users.find((x) => x.id === r.user_id);
+    if (!u || !keep(u)) continue;
+    const p = per.get(r.user_id) || { u, site: emptyTotals(), off: emptyTotals() };
+    p.site[r.item] += Number(r.site_total); p.off[r.item] += Number(r.official_total);
+    per.set(r.user_id, p);
+  }
+  const list = [...per.values()].map((p) => ({ ...p, rs: rates(p.site), ro: rates(p.off), uyum: agreement(p.site, p.off), fl: flags(p.site, p.off) }));
+
+  // Özet kartları
+  const S = emptyTotals(); const O = emptyTotals();
+  for (const p of list) ITEMS.forEach((i) => { S[i.code] += p.site[i.code]; O[i.code] += p.off[i.code]; });
+  const rs = rates(S); const ro = rates(O);
+  const sumUyum = agreement(S, O);
+  const card = (lbl, siteVal, offVal, diff, hint, cls = '') => `<div class="kpi ${cls}"><span class="lbl">${lbl}</span><span class="val" style="font-size:28px">${siteVal} <span class="muted" style="font-size:18px">/ ${offVal}</span></span><span class="delta ${diff.startsWith('+') ? 'down' : diff ? 'up' : ''}">${diff ? `${diff} puan site − resmi` : ''}</span><span class="hint">${hint}</span></div>`;
+  $('r-kpis').innerHTML = days ? [
+    card('Post Pre %', pct(rs.pp), pct(ro.pp), ptDiff(rs.pp, ro.pp), 'site / resmi'),
+    card('Savedesk %', pct(rs.sd), pct(ro.sd), ptDiff(rs.sd, ro.sd), 'site / resmi'),
+    card('Olumsuz kayıt (14271+17891)', S.pp_14271 + S.sd_17891, O.pp_14271 + O.sd_17891, '', 'site / resmi — eksik girilen olumsuzlar oranı şişirir'),
+    `<div class="kpi ${sumUyum !== null && sumUyum < 0.9 ? 'low' : 'ok'}"><span class="lbl">Genel uyum</span><span class="val">${sumUyum === null ? '—' : '%' + Math.round(sumUyum * 100)}</span><span class="delta"></span><span class="hint">Toplam adetlerin resmiyle örtüşmesi</span></div>`,
+  ].join('') : '';
+
+  // Tablo
+  const val = (p, k) => (k === 'pp' ? (p.rs.pp ?? -1) - (p.ro.pp ?? -1) : k === 'sd' ? (p.rs.sd ?? -1) - (p.ro.sd ?? -1) : k === 'uyum' ? (p.uyum ?? 2) : k === 'name' ? p.u.username : p.site[k] - p.off[k]);
+  list.sort((a, b) => { const x = val(a, rSort.key); const y = val(b, rSort.key); return (typeof x === 'string' ? x.localeCompare(y, 'tr') : x - y) * rSort.dir || a.u.username.localeCompare(b.u.username, 'tr'); });
+  const th = (key, label, left = false) => `<th class="sortable${left ? ' left' : ''}${rSort.key === key ? ' sorted' : ''}" data-rsort="${key}">${esc(label)}${rSort.key === key ? (rSort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const cell = (s, o) => `<td class="num${s < o ? ' gap-low' : s > o ? ' gap-high' : ''}" title="site ${s} · resmi ${o}">${s} <span class="muted">/ ${o}</span></td>`;
+  const rateCell = (s, o) => `<td class="small"><b>${pct(s)}</b> <span class="muted">/ ${pct(o)}</span>${s !== null && o !== null && Math.abs(s - o) >= 0.005 ? `<br><span class="delta ${s > o ? 'down' : 'up'}">${ptDiff(s, o)}</span>` : ''}</td>`;
+  const body = list.map((p) => `<tr><td class="left"><b>${esc(p.u.username)}</b><br><span class="small muted">${esc(teamName(p.u.team_leader_id) || '—')}</span></td>
+    ${ITEMS.map((i) => cell(p.site[i.code], p.off[i.code])).join('')}${rateCell(p.rs.pp, p.ro.pp)}${rateCell(p.rs.sd, p.ro.sd)}
+    <td><span class="rate ${p.uyum === null ? '' : p.uyum >= 0.9 ? 'ok' : 'low'}">${p.uyum === null ? '—' : '%' + Math.round(p.uyum * 100)}</span></td>
+    <td class="left">${p.fl.map(([c, t]) => `<span class="pill ${c}">${esc(t)}</span>`).join(' ')}</td></tr>`).join('')
+    || `<tr><td colspan="11" class="empty">${days ? 'Bu dönemde karşılaştırılacak uzman yok.' : 'Önce resmi raporu yükleyin.'}</td></tr>`;
+  $('r-table').innerHTML = `<thead><tr>${th('name', 'Kullanıcı', true)}${R_COLS.map((c) => th(c.key, c.label)).join('')}<th class="left">Uyarılar</th></tr></thead><tbody>${body}</tbody>`;
+}
+$('r-table').addEventListener('click', (ev) => {
+  const t = ev.target.closest('th[data-rsort]');
+  if (!t) return;
+  const key = t.dataset.rsort;
+  rSort = rSort.key === key ? { key, dir: -rSort.dir } : { key, dir: key === 'uyum' || key === 'name' ? 1 : -1 };
+  renderReport().catch((e) => toast(e.message, 'error'));
+});
+
 // ---------------------------------------------------------------- Yönetici paneli
 const AUDIT_NAMES = {
   admin_login: 'Yönetici girişi', create_user: 'Kullanıcı ekleme', delete_user: 'Kullanıcı silme', set_user_password: 'Kullanıcı şifresi',
   set_targets: 'Hedef kartı', set_maintenance: 'Bakım modu', change_own_password: 'Yönetici şifresi', set_count: 'Adet düzeltme',
   delete_entry: 'Kayıt silme', set_team: 'Takım değişikliği', create_team_leader: 'Takım lideri ekleme', delete_team_leader: 'Takım lideri silme',
-  create_contest: 'Yarışma oluşturma', cancel_contest: 'Yarışma iptali',
+  create_contest: 'Yarışma oluşturma', cancel_contest: 'Yarışma iptali', upload_official: 'Resmi rapor yükleme',
 };
 const auditDetail = (a) => {
   const d = a.details || {};
@@ -340,6 +443,7 @@ const auditDetail = (a) => {
   if (a.action === 'set_team') return `${d.username} → ${d.team || 'takımsız'}`;
   if (a.action === 'create_team_leader' || a.action === 'delete_team_leader') return d.name || '';
   if (a.action === 'create_contest' || a.action === 'cancel_contest') return d.message || '';
+  if (a.action === 'upload_official') return `${d.filename || ''} · ${d.day_from ? fmtShort(d.day_from) : ''}–${d.day_to ? fmtShort(d.day_to) : ''} · ${d.matched ?? 0} uzman`;
   return d.username || '';
 };
 
@@ -527,7 +631,7 @@ async function renderLogins() {
 }
 
 // ---------------------------------------------------------------- Sekmeler ve senkronizasyon
-const renderers = { home: renderHome, daily: renderDaily, history: renderHistory, panel: renderPanel, logins: renderLogins };
+const renderers = { home: renderHome, daily: renderDaily, history: renderHistory, report: renderReport, panel: renderPanel, logins: renderLogins };
 setupTabs($('nav'), (t) => { tab = t; refresh(); });
 
 let running = false; let again = false;

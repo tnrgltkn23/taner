@@ -14,6 +14,7 @@
       <button data-tab="home" class="active">Ana Sayfa</button>
       <button data-tab="daily">Günlük Skor</button>
       <button data-tab="history">Geçmiş Skorlar</button>
+      <button data-tab="report">Resmi Rapor</button>
       <button data-tab="panel">Yönetici Paneli</button>
       <button data-tab="logins" id="tab-logins" class="hidden">Giriş Kayıtları</button>
     </nav>
@@ -80,6 +81,37 @@
     </section>
 
     <!-- Yönetici paneli -->
+    <!-- Resmi rapor: Churn Aktivite raporu ile site girişlerinin karşılaştırması -->
+    <section data-panel="report" class="hidden">
+      <div class="card">
+        <div class="card-head"><h2>Resmi raporu yükle</h2><span class="muted small" id="r-last"></span></div>
+        <div class="row">
+          <input type="file" id="r-file" accept=".xlsx,.xls">
+          <button class="btn green" id="r-upload" type="button">Yükle ve karşılaştır</button>
+          <span class="muted small" id="r-status"></span>
+        </div>
+        <p class="muted small" style="margin:10px 0 0">"Churn Aktivite" Excel dosyasını olduğu gibi seçin. Dosya tarayıcınızda okunur; sunucuya yalnızca kişi × gün × kalem adetleri gönderilir. Aynı günler için yeniden yüklerseniz eski resmi veri yenisiyle değişir. Bugünün verisi alınmaz.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="row">
+            <div class="seg" id="r-period" role="group" aria-label="Dönem">
+              <button type="button" data-p="day" class="active">Gün</button>
+              <button type="button" data-p="month">Ay</button>
+            </div>
+            <input type="date" id="r-day">
+            <input type="month" id="r-month" class="hidden">
+            <span class="label-navy">Takım Lideri:</span><select id="r-team"></select>
+          </div>
+          <span class="muted small" id="r-sub"></span>
+        </div>
+        <div class="kpis" id="r-kpis"></div>
+        <div class="table-wrap" style="margin-top:16px"><table id="r-table"></table></div>
+        <p class="muted small" style="margin:10px 0 0">Her hücrede <b>site / resmi</b>. Kırmızı: uzman resmide olandan az girmiş. Uyum puanı: girilen kayıtların resmi rapora ne kadar yakın olduğu (100 = birebir). Başlıklara tıklayarak sıralayabilirsiniz.</p>
+      </div>
+    </section>
+
     <section data-panel="panel" class="hidden">
       <div class="panel-grid">
         <div class="card">

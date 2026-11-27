@@ -135,21 +135,36 @@ $('h-day').addEventListener('change', () => loadHistory().catch((e) => toast(e.m
 async function loadHistory() {
   const d = $('h-day').value || istanbulToday();
   $('h-title').textContent = fmtLong(d);
-  const rows = unwrap(await client.from('entries').select('item, gsm, delta, source, created_at')
-    .eq('user_id', user.id).eq('day', d).is('deleted_at', null).order('created_at'));
+  // Uzman GSM numaralarını görmez: yalnızca kalem ve adet okunur
+  const [rows, cmp] = await Promise.all([
+    client.from('entries').select('item, delta').eq('user_id', user.id).eq('day', d).is('deleted_at', null).then(unwrap),
+    client.rpc('report_compare', { p_from: d, p_to: d }).then(unwrap),
+  ]);
   const t = emptyTotals();
-  const gsms = Object.fromEntries(ITEMS.map((i) => [i.code, []]));
-  for (const r of rows) {
-    t[r.item] += r.delta;
-    if (r.source === 'user') gsms[r.item].push(r.gsm);
+  for (const r of rows) t[r.item] += r.delta;
+  const hasOfficial = (cmp[0]?.days_count ?? 0) > 0;
+  const off = emptyTotals();
+  for (const r of cmp) if (r.user_id === user.id) off[r.item] += Number(r.official_total);
+
+  if (!hasOfficial) {
+    $('h-table').innerHTML = `<thead><tr>${ITEMS.map((i) => `<th>${esc(i.label)}</th>`).join('')}<th>Post Pre %</th><th>Savedesk %</th></tr></thead>
+      <tbody><tr class="total">${ITEMS.map((i) => `<td class="num">${t[i.code]}</td>`).join('')}<td>${pct(rates(t).pp)}</td><td>${pct(rates(t).sd)}</td></tr></tbody>
+      <tfoot><tr><td colspan="8" class="left small muted">Bu gün için resmi rapor henüz yüklenmedi. Yüklendiğinde girdiğiniz adetlerle resmi adetler burada yan yana görünür.</td></tr></tfoot>`;
+    return;
   }
-  $('h-table').innerHTML = `<thead><tr>${ITEMS.map((i) => `<th>${esc(i.label)}</th>`).join('')}</tr></thead>
+  const { agreement } = await import('./report.js');
+  const rs = rates(t); const ro = rates(off);
+  const u = agreement(t, off);
+  const diffCell = (a, b) => `<td class="num${a < b ? ' gap-low' : a > b ? ' gap-high' : ''}">${a - b > 0 ? '+' : ''}${a - b}</td>`;
+  const pts = (a, b) => (a === null || b === null ? '' : `${a - b >= 0 ? '+' : '−'}${(Math.abs(a - b) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} puan`);
+  $('h-table').innerHTML = `<thead><tr><th class="left"></th>${ITEMS.map((i) => `<th>${esc(i.label)}</th>`).join('')}<th>Post Pre %</th><th>Savedesk %</th></tr></thead>
     <tbody>
-      <tr class="total">${ITEMS.map((i) => `<td class="num">${t[i.code]}</td>`).join('')}</tr>
-      <tr>${ITEMS.map((i) => `<td style="vertical-align:top"><div class="gsm-list">${
-        gsms[i.code].length ? gsms[i.code].map((g) => esc(g || '(silindi)')).join('<br>') : '<span class="muted">—</span>'
-      }</div></td>`).join('')}</tr>
-    </tbody>`;
+      <tr><td class="left"><b>Benim girdiğim</b></td>${ITEMS.map((i) => `<td class="num">${t[i.code]}</td>`).join('')}<td><b>${pct(rs.pp)}</b></td><td><b>${pct(rs.sd)}</b></td></tr>
+      <tr class="total"><td class="left">Resmi rapor</td>${ITEMS.map((i) => `<td class="num">${off[i.code]}</td>`).join('')}<td>${pct(ro.pp)}</td><td>${pct(ro.sd)}</td></tr>
+      <tr><td class="left"><b>Fark</b></td>${ITEMS.map((i) => diffCell(t[i.code], off[i.code])).join('')}<td class="small">${pts(rs.pp, ro.pp)}</td><td class="small">${pts(rs.sd, ro.sd)}</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="9" class="left">Veri uyum puanınız: <b class="rate ${u === null ? '' : u >= 0.9 ? 'ok' : 'low'}">${u === null ? '—' : '%' + Math.round(u * 100)}</b>
+      <span class="small muted"> · Kırmızı: resmide olup girmediğiniz kayıtlar. Ödül ve değerlendirmeler resmi rapora göre yapılır.</span></td></tr></tfoot>`;
 }
 
 // ---------------------------------------------------------------- Mini yarışma duyurusu
