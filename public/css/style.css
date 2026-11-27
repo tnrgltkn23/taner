@@ -272,3 +272,20 @@ body.kpi-like main { padding-top: 18px; }
 .login-wrap .login-card { position: relative; z-index: 2; }
 .login-logo { height: 140px; width: auto; }
 .login-wrap .hero-mascot { bottom: 8%; }
+
+/* Uzman ve yönetici ekranları: sitenin mor tema renkleri */
+body.kpi-like {
+  --brand: #8b3dff; --brand-soft: #f3eefe; --navy: #2e2258; --navy-2: #241a47; --navy-soft: #f3eefe;
+  --green: #8b3dff; --green-dark: #6f2ee0; --border: #e7e1f3;
+}
+body.kpi-like .target-card { background: linear-gradient(135deg, #2e2258, #4b2a8f); border-left-color: #b98cff; }
+body.kpi-like .target-card .t b { color: #d9c2ff; }
+body.kpi-like .kpi { border-top-color: #8b3dff; }
+body.kpi-like .kpi.ok { border-top-color: var(--ok); }
+body.kpi-like .kpi.low { border-top-color: var(--red); }
+body.kpi-like th { background: #2e2258; }
+body.kpi-like th.sorted { background: #6f2ee0; }
+body.kpi-like tr.total td { background: #f3eefe; border-top-color: #8b3dff; }
+body.kpi-like .label-navy { background: #2e2258; }
+body.kpi-like .seg button.active { background: #8b3dff; }
+body.kpi-like .section-title, body.kpi-like .group h2 { border-left-color: #8b3dff; }
