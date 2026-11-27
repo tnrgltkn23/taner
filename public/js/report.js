@@ -3,7 +3,7 @@
 //
 // Eşleştirme (26.11.2026 verisiyle doğrulandı):
 //   484 İkna    → "PostPre Data", Triplet 484, Başvuru Sonucu "İkna Edildi", Kapatan User, Closed Date
-//   484 Geçiş   → "PostPre Data", Triplet 484, Başvuru Sonucu "Faturasız Geçiş…", Kapatan User, Closed Date
+//   484 Geçiş   → "PostPre Data", Triplet 484, Başvuru Sonucu "Faturasıza Geçiş…", Kapatan User, Closed Date
 //   14271       → "Acln Pusula", SR Vf Triplet No 14271 (açılan kayıt), SR Created By User, SR Open Date
 //   16234 İkna  → "Savedesk Data", Başvuru Sonucu "İkna Edildi", Kapatan User, Closed Date
 //   16234 İptal → "Savedesk Data", Başvuru Sonucu "İptal" / "Vefat/İptal", Kapatan User, Closed Date
@@ -71,7 +71,7 @@ export async function parseChurnReport(file) {
     if (String(r[ppT] ?? '').trim() !== '484') continue;
     const res = norm(r[ppR]);
     if (res === 'ikna edildi') add(dayOf(r[ppD]), r[ppU], 'pp_ikna');
-    else if (res.startsWith('faturasiz gecis')) add(dayOf(r[ppD]), r[ppU], 'pp_gecis');
+    else if (res.startsWith('faturas')) add(dayOf(r[ppD]), r[ppU], 'pp_gecis'); // "Faturasıza Geçiş-Anlık / İleri Tarihli"
   }
 
   const sd = table(XLSX, wb, 'Savedesk Data', 'SR Number');
