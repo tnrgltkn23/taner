@@ -330,8 +330,6 @@ const AUDIT_NAMES = {
   set_targets: 'Hedef kartı', set_maintenance: 'Bakım modu', change_own_password: 'Yönetici şifresi', set_count: 'Adet düzeltme',
   delete_entry: 'Kayıt silme', set_team: 'Takım değişikliği', create_team_leader: 'Takım lideri ekleme', delete_team_leader: 'Takım lideri silme',
   create_contest: 'Yarışma oluşturma', cancel_contest: 'Yarışma iptali',
-  plan_names: 'Mola planı eşleştirme', portal_plans: 'Mola planı yükleme', portal_plan_delete: 'Mola planı silme',
-  portal_maintenance: 'Portal bakım modu',
 };
 const auditDetail = (a) => {
   const d = a.details || {};
