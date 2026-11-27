@@ -23,6 +23,12 @@ export const SUPABASE_URL = () => {
 export const PUBLISHABLE_KEY = () => env('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY');
 const SECRET_KEY = () => env('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY');
 export const CRON_SECRET = () => env('CRON_SECRET');
+// Çerez oturumlarını imzalamak için anahtar: gizli anahtardan türetilir (ayrı değişken gerekmez)
+export function sessionKey() {
+  const k = SECRET_KEY();
+  if (!k) throw new HttpError(500, 'Sunucu yapılandırması eksik: SUPABASE_SECRET_KEY');
+  return crypto.createHmac('sha256', k).update('uzman-portal-session-v1').digest();
+}
 const AUTH_EMAIL_DOMAIN = () => env('AUTH_EMAIL_DOMAIN') || 'uht2.example.com'; // e-posta gönderilmez; iç kimlik
 
 const noPersist = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
