@@ -292,3 +292,13 @@ body.kpi-like .section-title, body.kpi-like .group h2 { border-left-color: #8b3d
 
 /* Yönetici ekranındaki Mola Planı sekmeleri */
 .mola-frame { width: 100%; min-height: 80vh; border: 0; border-radius: 16px; background: #fff; box-shadow: var(--shadow); display: block; }
+
+/* Doğum günü banner'ı (giriş ekranı) */
+.login-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.birthday { position: relative; z-index: 3; max-width: 520px; width: 100%; text-align: center; color: #fff; padding: 18px 24px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(139,61,255,.92), rgba(75,42,143,.92)); border: 1px solid rgba(255,255,255,.35); box-shadow: 0 12px 40px rgba(40,10,90,.45); animation: bd-pop .6s ease-out; }
+.birthday .bd-icon { font-size: 34px; line-height: 1; }
+.birthday .bd-names { font-family: Georgia, 'Playfair Display', serif; font-size: 28px; margin-top: 6px; }
+.birthday .bd-msg { margin-top: 4px; font-weight: 700; color: #ffe08a; letter-spacing: .3px; }
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+@keyframes bd-pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
