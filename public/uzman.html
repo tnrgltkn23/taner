@@ -8,19 +8,32 @@
   
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="scene">
-  <header class="topbar"><div class="topbar-inner">
-    <div class="brand"><img src="/img/pusulacx-logo.png" alt="Pusula CX" width="119" height="34"><span class="app">Uzman Hedef Takip</span> <span id="env" class="env-badge hidden"></span></div>
-    <nav class="tabs" id="nav">
+<body class="kpi-like">
+  <section class="hero-scene">
+    <header class="hero-nav">
+      <a class="hero-logo" href="/uzman"><img src="/img/taner-eren-logo.png" alt="Taner &amp; Eren" height="72"></a>
+      <span id="env" class="env-badge hidden"></span>
+      <span class="spacer"></span>
+      <span id="live" class="live"><span class="dot"></span><span class="txt">Bağlanıyor…</span></span>
+      <a class="hero-link" href="/kpi/">KPI Performans</a>
+      <a class="hero-link" href="/ikna/">İkna Rehberi</a>
+      <a class="hero-link active" href="/uzman">Günlük Verilerim</a>
+      <button class="hero-link" id="logout" type="button">Çıkış</button>
+    </header>
+    <div class="hero-text">
+      <h1>Her çağrı, hedefe bir adım.</h1>
+      <p>Post Pre ve Savedesk kayıtlarını anında gir, oranını takip et, resmi raporla farkını gör.</p>
+    </div>
+    <img class="hero-mascot" src="/portal/mascot-right.webp" alt="" aria-hidden="true">
+  </section>
+
+  <div class="page-head">
+    <div class="page-title"><h1>Günlük Verilerim</h1><span class="pill gray" id="who"></span></div>
+    <nav class="pill-tabs" id="nav">
       <button data-tab="daily" class="active">Günlük Skor</button>
       <button data-tab="history">Geçmiş Skorlarım</button>
     </nav>
-    <span class="spacer"></span>
-    <span id="live" class="live"><span class="dot"></span><span class="txt">Bağlanıyor…</span></span>
-    <span id="who" class="who"></span>
-    <a class="btn sm ghost" href="/kpi/">KPI Performans</a><a class="btn sm ghost" href="/ikna/">İkna Rehberi</a>
-    <button class="btn sm ghost" id="logout" type="button">Çıkış</button>
-  </div></header>
+  </div>
 
   <main>
     <!-- Günlük skor -->
