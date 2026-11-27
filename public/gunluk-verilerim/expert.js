@@ -1,4 +1,4 @@
-import { $, api, dateText, escape, groups, pct, rates, recordTable, status, totalsFor } from './common.js?v=2';
+import { $, api, dateText, escape, groups, pct, rates, status, totalsFor } from './common.js?v=2';
 import { showMyPlan, clearMyPlan } from './my-plan.js?v=3';
 
 let config;
@@ -27,7 +27,6 @@ function showScores(entries) {
       <small>Hedef ${pct(target)}${description}</small></article>`;
   }).join('');
   for (const { code } of config.items) $('total-' + code).textContent = totals[code];
-  $('records').innerHTML = recordTable(entries, config.items);
 }
 
 async function loadScores() {
@@ -71,7 +70,6 @@ function clearSession() {
   $('login').hidden = false;
   $('intro').textContent = 'Mola saatlerini, Post Pre ve Savedesk kayıtlarını takip et.';
   $('gsm').value = '';
-  $('records').replaceChildren();
   $('expert-contests').hidden = true;
   $('expert-contest-list').replaceChildren();
   $('scores').replaceChildren();
@@ -225,10 +223,6 @@ $('history').addEventListener('click', () => setView(true));
 $('history-date').addEventListener('change', () => {
   status();
   if ($('history-date').validity.valid) loadScores();
-});
-$('refresh').addEventListener('click', () => {
-  status();
-  loadScores();
 });
 const contestTime = new Intl.DateTimeFormat('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'short', timeStyle: 'short' });
 async function loadExpertContests() {

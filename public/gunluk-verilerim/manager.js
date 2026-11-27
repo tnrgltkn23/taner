@@ -54,7 +54,8 @@ function filterExperts() {
 
 function showAccounts() {
   $('accounts').innerHTML = config.users.map(expert => `<div class="daily-account">
-    <span><strong>${escape(expert.name)}</strong><br>${escape(expert.username)} · ${expert.active ? 'Aktif' : 'Kapalı'}</span>
+    <span><strong>${expert.hasName === false ? '<em>Ad soyad girilmemiş</em>' : escape(expert.name)}</strong><br>${escape(expert.username)} · ${expert.active ? 'Aktif' : 'Kapalı'}</span>
+    <button class="button secondary" type="button" data-rename="${escape(expert.id)}">Ad soyadı düzenle</button>
     <label>Takım<select data-team-user="${escape(expert.id)}">${teamOptions(expert.teamId)}</select></label>
     <form data-reset="${escape(expert.id)}">
       <label>Yeni şifre<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="new-password" required></label>
@@ -218,6 +219,14 @@ $('accounts').addEventListener('change', event => {
       throw error;
     }
   });
+});
+delegatedClick('accounts', '[data-rename]', async button => {
+  const expert = config.users.find(user => user.id === button.dataset.rename);
+  const name = prompt(`${expert?.username} için ad soyad (mola planındaki yazımla):`, expert?.hasName ? expert.name : '');
+  if (name === null || !name.trim()) return;
+  await management('users', { id: button.dataset.rename, name: name.trim() });
+  await loadConfig();
+  status('Ad soyad güncellendi.');
 });
 delegatedClick('accounts', '[data-account]', async button => {
   const active = button.dataset.active === '1';

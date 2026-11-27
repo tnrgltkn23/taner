@@ -219,7 +219,8 @@ async function dailyRoute(req, route, isGet, body, q) {
     const day = q.day ?? d;
     if (!dateOK(day) || day > d) return reply({ error: 'Geçerli bir tarih seç.' }, 400);
     const [entries, t] = await Promise.all([dayEntries(user.id, day), targets()]);
-    return reply({ day, today: d, entries, targets: t });
+    // Uzman GSM numaralarını hiçbir zaman görmez: yalnızca kalem ve adet gönderilir
+    return reply({ day, today: d, entries: entries.map((e) => ({ ...e, gsm: null })), targets: t });
   }
   if (!isGet && route === 'entries') return addEntry(user, d, body);
   if (!isGet && route === 'undo') return undoEntry(user, body);
@@ -296,6 +297,15 @@ async function report(q, d) {
 async function manageUser(me, body) {
   const pin = typeof body.pin === 'string' ? body.pin : '';
   const now = new Date().toISOString();
+  // Ad soyad düzenleme (mola planındaki adla eşleşir ve uzmanın ekranında görünür)
+  if (body.id && typeof body.name === 'string' && !pin && body.active === undefined) {
+    const name = body.name.trim().replace(/\s+/g, ' ');
+    if (!UUID_RE.test(body.id) || name.length < 2 || name.length > 100) return reply({ error: 'Ad soyad 2–100 karakter olmalı.' }, 400);
+    const rows = check(await db().from('users').update({ full_name: name, updated_at: now }).eq('id', body.id).eq('role', 'expert').select('username'));
+    if (!rows.length) return reply({ error: 'Uzman hesabı bulunamadı.' }, 404);
+    await audit(me.id, 'plan_names', { username: rows[0].username, portal: true });
+    return reply({ ok: true });
+  }
   if (body.id) {
     if (!UUID_RE.test(body.id) || (pin && !USER_PASSWORD_RE.test(pin)) || (!pin && typeof body.active !== 'boolean')) {
       return reply({ error: 'Yeni şifre 5 haneli olmalı.' }, 400);
@@ -441,7 +451,7 @@ async function managerRoute(req, route, isGet, body, q) {
         db().from('team_leaders').select('id, name').order('name'),
         targets(), getSettings(), contestList(false),
       ]);
-      const list = check(users).map((u) => ({ id: u.id, username: u.username, name: u.full_name || u.username, active: u.active ? 1 : 0, teamId: u.team_leader_id }))
+      const list = check(users).map((u) => ({ id: u.id, username: u.username, name: u.full_name || u.username, hasName: Boolean(u.full_name), active: u.active ? 1 : 0, teamId: u.team_leader_id }))
         .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
       return reply({ today: d, role, items: ITEM_LIST, targets: t, users: list, teams: check(teams), maintenance: Boolean(s.maintenance), contests });
     }
